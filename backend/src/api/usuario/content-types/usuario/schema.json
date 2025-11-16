@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "usuarios",
+  "info": {
+    "singularName": "usuario",
+    "pluralName": "usuarios",
+    "displayName": "Usuario"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre_usuario": {
+      "type": "uid",
+      "private": true,
+      "targetField": "nombre",
+      "required": false
+    },
+    "nombre": {
+      "type": "string",
+      "required": true
+    },
+    "correo": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "tipo_usuario": {
+      "type": "enumeration",
+      "required": true,
+      "default": "cliente",
+      "enum": [
+        "cliente",
+        "veterinario",
+        "recepcionista"
+      ]
+    },
+    "fecha_registro": {
+      "type": "datetime",
+      "required": false
+    }
+  }
+}

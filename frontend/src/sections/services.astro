@@ -1,0 +1,25 @@
+---
+import ServiceCard from "../components/ServiceCard.astro";
+---
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+
+<section class="flex flex-col justify-center mx-auto gap-4 min-h-screen max-w-[70%]" id="servicios">
+    <h1 class="text-3xl self-center">Nuestros Servicios</h1>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 w-full h-full">
+        <ServiceCard 
+            title="Consulta General" 
+            description="Exámenes completos para asegurar la salud de tu mascota." 
+            service="stethoscope"
+        />
+        <ServiceCard 
+            title="Vacunación" 
+            service="vaccines"
+            description="Protege a tu mascota con nuestro programa de vacunación." 
+        />
+        <ServiceCard 
+            title="Cirugía" 
+            description="Procedimientos quirúrgicos seguros y efectivos." 
+            service="cut"
+        />
+    </div>
+</section>

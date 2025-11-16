@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+
+@import "tailwindcss";
+
+:root {
+    --light-bgcolor: #F8F7F5; /*Color de fondo principal*/
+    --light-primaryColor: #FF8119; /*Botones principales y este color es hover para colores secundarios | navbar*/
+    --light-secondaryColor: #FFC89A; /*Color de fondo de los botones secundarios*/
+    --light-textColor: white; /*Color del texto principal*/
+} 
+
+.manrope{
+  font-family: "Manrope", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Smooth scrolling for in-page anchors */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Compensa el header fijo: evita que el contenido quede oculto detrás del header sticky */
+/* [id] {
+  scroll-margin-top: 72px;
+} */

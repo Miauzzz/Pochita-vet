@@ -1,0 +1,29 @@
+---
+import ContactCard from '../components/ContactCard.astro';
+---
+<section id="contact" class="flex flex-col justify-center items-center mx-auto w-full px-4 sm:px-6 lg:px-0 lg:max-w-[70%] min-h-screen">
+    <h1 class="text-3xl font-bold mb-4">Estamos aquí para ayudarte</h1>
+    <p class="lg:px-15 mb-10">¿Tienes alguna pregunta o necesitas asistencia? No dudes en contactarnos. nuestro equipo está listo para ayudarte.</p>
+
+    <div class="flex flex-col justify-center items-start w-full md:flex-row md:space-y-0 md:space-x-12 lg:flex-row">
+        <div class="flex flex-col w-full my-auto gap-10 h-auto max-w-md">
+            <ContactCard contact="phone" title="Teléfono" content="+56 9 1234 5678" />
+            <ContactCard contact="email" title="Correo Electrónico" content="contacto@pochita.cl" />
+            <ContactCard contact="location_on" title="Dirección" content="Av. Siempre Viva 123, Santiago, Chile" />
+            <ContactCard contact="access_time" title="Horario de Atención" content="Lunes a Viernes: 9:00 - 18:00" />
+        </div>
+
+        <form class="flex flex-col space-y-4 w-full max-w-md">
+            <label for="name" class="text-sm font-medium">Nombre:</label>
+            <input type="text" id="name" name="name" class="border border-gray-300 rounded px-3 py-2" required>
+
+            <label for="email" class="text-sm font-medium">Correo Electrónico:</label>
+            <input type="email" id="email" name="email" class="border border-gray-300 rounded px-3 py-2" required>
+
+            <label for="message" class="text-sm font-medium">Mensaje:</label>
+            <textarea id="message" name="message" rows="4" class="border border-gray-300 rounded px-3 py-2" required></textarea>
+
+            <button type="submit" class="bg-orange-400 text-white rounded px-4 py-2 hover:bg-orange-500">Enviar Mensaje</button>
+        </form>
+    </div>
+</section>

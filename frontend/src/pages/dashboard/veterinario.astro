@@ -1,0 +1,12 @@
+---
+import DashboardLayout from '../../layouts/BaseDashboard.astro';
+---
+
+<DashboardLayout>
+    <h1>Contenido del dashboard de Veterinario</h1>
+</DashboardLayout>
+
+<script type="module">
+  import { requireRole } from "../../lib/authHelpers.js";
+  requireRole(["veterinario"]);
+</script>

@@ -1,0 +1,108 @@
+---
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <title>Acceso plataforma</title>
+    <style>[x-cloak]{display:none}</style>
+</head>
+<body x-data="{ isRegister: false }" x-init="$nextTick(()=> $refs.loginUser && $refs.loginUser.focus())" class="bg-stone-700 text-white  flex flex-col justify-center items-center p-4 h-100">
+    <!-- wrapper relativo: el header se mantiene en su posición y el formulario aparece como dropdown -->
+    <div class="relative w-full max-w-md mx-auto">
+        <!-- Toggle Switch moderno -->
+        <div class="bg-amber-600 w-full p-4 rounded-t-lg shadow-lg">
+            <a href="/" >&larr; Ir atrás</a>
+            <img src="/logo.webp" alt="Logo" class="w-50 mx-auto mb-4"/>
+            <div class="relative bg-orange-300 border-2 border-amber-50 rounded-full p-1 flex items-center">
+                <!-- Indicador deslizante -->
+                <div
+                class="absolute top-1 bottom-1 w-1/2 bg-black rounded-full transition-all duration-500 ease-out shadow-md"
+                :class="isRegister ? 'left-1' : 'left-1/2 -ml-1'"
+                ></div>
+                
+                <!-- Botones del toggle -->
+                <button
+                    type="button"
+                    @click="isRegister = true; $nextTick(()=> $refs.regUser && $refs.regUser.focus())"
+                    class="relative z-10 w-1/2 py-2 px-4 rounded-full transition-colors duration-500 text-sm font-medium"
+                    :class="isRegister ? 'text-white' : 'text-gray-700'"
+                >
+                    Registrarse
+                </button>
+                <button
+                    type="button"
+                    @click="isRegister = false; $nextTick(()=> $refs.loginUser && $refs.loginUser.focus())"
+                    class="relative z-10 w-1/2 py-2 px-4 rounded-full transition-colors duration-500 text-sm font-medium"
+                    :class="!isRegister ? 'text-white' : 'text-gray-700'"
+                >
+                    Iniciar Sesión
+                </button>
+            </div>
+        </div>
+
+        <!-- dropdown  -->
+        <div class="absolute left-0 right-0 z-20">
+            <div
+                x-show="!isRegister"
+                x-cloak
+                x-transition:enter="transition-all ease-out duration-500"
+                x-transition:enter-start="opacity-0 max-h-0"
+                x-transition:enter-end="opacity-100 max-h-96"
+                class="bg-amber-600 rounded-b-lg shadow-lg w-full overflow-hidden"
+            >
+                <!-- Login form -->
+                <form id="login-form" class="w-full bg-transparent p-6" @submit.prevent>
+                    <h1 class="mb-4 text-center text-xl font-semibold">Acceso a la plataforma</h1>
+                    <label for="username" class="block mb-1 text-sm">Correo Electrónico:</label>
+                    <input x-ref="loginUser" type="text" id="username" name="identifier" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <label for="password" class="block mb-1 text-sm">Contraseña:</label>
+                    <input type="password" id="password" name="password" required class="w-full mb-2 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <div class="flex items-center mb-4">
+                        <input type="checkbox" id="remember" name="remember" class="mr-3 w-4 h-4 text-black bg-white rounded focus:outline-none" />
+                        <label for="remember" class="text-sm">Mantener sesión iniciada</label>
+                    </div>
+                    <div class="flex justify-end">
+                        <a href="#" class="mr-25 self-center text-sm text-white text-shadow-xs text-shadow-black ">¿Ha olvidado su contraseña?</a>
+                        <button type="submit" class="px-6 py-2 bg-black hover:bg-white hover:text-black rounded transition-colors duration-200">Acceder</button>
+                    </div>
+                </form>
+            </div>
+
+            <div
+                x-show="isRegister"
+                x-cloak
+                x-transition:enter="transition-all ease-out duration-400"
+                x-transition:enter-start="opacity-0 max-h-0"
+                x-transition:enter-end="opacity-100 max-h-[600px]"
+                class="bg-amber-600 rounded-b-lg shadow-lg w-full overflow-hidden"
+            >
+                <!-- Register form -->
+                <form id="register-form" class="w-full bg-transparent p-6" @submit.prevent>
+                    <h1 class="mb-4 text-center text-xl font-semibold">Registro</h1>
+                    <label for="fullname" class="block mb-1 text-sm">Nombre completo:</label>
+                    <input type="text" id="fullname" name="fullname" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <label for="email" class="block mb-1 text-sm">Correo electrónico:</label>
+                    <input type="email" id="email" name="email" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <label for="reg-password" class="block mb-1 text-sm">Contraseña:</label>
+                    <input type="password" id="reg-password" name="password" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <label for="confirm-password" class="block mb-1 text-sm">Confirmar contraseña:</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required class="w-full mb-4 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-6 py-2 bg-black hover:bg-white hover:text-black rounded transition-colors duration-500">Registrarse</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script type="module">
+        // @ts-nocheck
+        import { initLoginPage } from "../lib/login.js";
+        initLoginPage();
+    </script>
+
+</body>
+</html>
