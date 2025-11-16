@@ -3,10 +3,19 @@ import DashboardLayout from '../../layouts/BaseDashboard.astro';
 ---
 
 <DashboardLayout>
-    <h1>Contenido del dashboard de Veterinario</h1>
+  <h1>Contenido del dashboard de veterinario</h1>
 </DashboardLayout>
 
 <script type="module">
-  import { requireRole } from "../../lib/authHelpers.js";
-  requireRole(["veterinario"]);
+  import { requireRole } from "/src/lib/authHelpers.js";
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("DOM listo, ejecutando requireRole para veterinario");
+      requireRole(["veterinario"]);
+    });
+  } else {
+    console.log("DOM ya listo, ejecutando requireRole para veterinario");
+    requireRole(["veterinario"]);
+  }
 </script>

@@ -16,5 +16,47 @@ const { title } = Astro.props;
             <slot /> <!-- Aquí se renderiza el contenido específico del dashboard -->
         </main>
     </body>
+
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script type="module">
+        import { loadSession, clearSession } from '/src/lib/authHelpers.js';
+        import { fetchUsuarioByEmail } from '/src/lib/authAPI.js';
+        
+        async function validateRole() {
+            try {
+                const session = loadSession();
+                if (!session?.jwt || !session?.appUser?.authUser?.email) return;
+                
+                const currentRole = session.appUser?.usuario?.tipo_usuario?.toLowerCase();
+                if (!currentRole) return;
+                
+                // Consultar rol actual en Strapi
+                const updatedUsuario = await fetchUsuarioByEmail(session.appUser.authUser.email, session.jwt);
+                const serverRole = updatedUsuario?.tipo_usuario?.toLowerCase();
+                
+                // Si el rol cambió en el servidor
+                if (serverRole && serverRole !== currentRole) {
+                    console.warn(`Rol cambiado en servidor: ${currentRole} -> ${serverRole}. Cerrando sesión...`);
+                    clearSession();
+                    alert('Porfavor, vuelva a iniciar sesión, se aplicaron cambios.');
+                    window.location.href = '/login';
+                }
+            } catch (err) {
+                console.error('Error validando rol:', err);
+                // Si el token expiró o hay error de auth, limpiar sesión
+                if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+                    clearSession();
+                    window.location.href = '/login';
+                }
+            }
+        }
+        
+        // Validar rol al cargar el dashboard
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', validateRole);
+        } else {
+            validateRole();
+        }
+    </script>
 </html>
