@@ -39,3 +39,62 @@ export async function obtenerDisponibilidadPorFecha(fecha) {
     return [];
   }
 }
+
+// Crear una nueva disponibilidad (requiere JWT y veterinario: user id)
+export async function crearDisponibilidad({ fecha, hora_inicio, hora_fin, veterinarioId, jwt }) {
+  try {
+    const body = {
+      data: {
+        fecha,
+        hora_inicio,
+        hora_fin,
+        disponible: true,
+        estado: 'disponible',
+        veterinario: veterinarioId,
+      },
+    };
+
+    const res = await fetch(`${STRAPI_URL}/api/disponibilidades`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      console.error('Error al crear disponibilidad:', res.status, json);
+      throw new Error(json.error?.message || 'No se pudo crear la disponibilidad');
+    }
+
+    return json.data;
+  } catch (err) {
+    console.error('crearDisponibilidad error:', err);
+    throw err;
+  }
+}
+
+// Eliminar disponibilidad por ID (requiere JWT)
+export async function eliminarDisponibilidad(disponibilidadId, jwt) {
+  try {
+    const res = await fetch(`${STRAPI_URL}/api/disponibilidades/${disponibilidadId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+
+    if (!res.ok) {
+      const json = await res.json();
+      console.error('Error al eliminar disponibilidad:', res.status, json);
+      throw new Error(json.error?.message || 'No se pudo eliminar la disponibilidad');
+    }
+
+    return true;
+  } catch (err) {
+    console.error('eliminarDisponibilidad error:', err);
+    throw err;
+  }
+}

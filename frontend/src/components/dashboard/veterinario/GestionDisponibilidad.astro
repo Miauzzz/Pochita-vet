@@ -1,0 +1,112 @@
+---
+---
+
+<div class="gestion-disponibilidad" x-data="gestionDisponibilidad()">
+  <h2 class="mb-4 text-xl font-semibold">Mi disponibilidad</h2>
+
+  <form @submit.prevent="crear()" class="mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <input type="date" x-model="fecha" required class="p-2 border rounded" />
+      <input type="time" x-model="hora_inicio" required class="p-2 border rounded" />
+      <input type="time" x-model="hora_fin" required class="p-2 border rounded" />
+      <button type="submit" :disabled="cargando" class="px-4 py-2 bg-black text-white rounded">
+        <span x-show="!cargando">Agregar</span>
+        <span x-show="cargando">Guardando...</span>
+      </button>
+    </div>
+  </form>
+
+  <div>
+    <h3 class="font-semibold mb-2">Tus franjas actuales</h3>
+    <template x-if="disponibilidades.length === 0">
+      <div class="text-sm text-gray-600">No tienes disponibilidades aún.</div>
+    </template>
+
+    <ul class="space-y-2 mt-3">
+      <template x-for="d in disponibilidades" :key="d.id">
+        <li class="p-2 border rounded flex justify-between items-center">
+          <div>
+            <div class="font-medium" x-text="d.attributes.fecha"></div>
+            <div class="text-sm text-gray-600" x-text="d.attributes.hora_inicio + ' - ' + d.attributes.hora_fin"></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="eliminar(d.id)" class="px-3 py-1 bg-red-600 text-white rounded">Eliminar</button>
+          </div>
+        </li>
+      </template>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // @ts-ignore
+  import { loadSession } from '../../../lib/authHelpers';
+  import { obtenerDisponibilidadPorVeterinario, crearDisponibilidad, eliminarDisponibilidad } from '../../../lib/disponibilidad';
+
+  function gestionDisponibilidad() {
+    return {
+      fecha: '',
+      hora_inicio: '',
+      hora_fin: '',
+      cargando: false,
+      disponibilidades: [],
+
+      async init() {
+        await this.cargar();
+      },
+
+      async cargar() {
+        const session = loadSession();
+        if (!session) return;
+        const vetId = session.appUser?.profile?.id;
+        try {
+          this.disponibilidades = await obtenerDisponibilidadPorVeterinario(vetId);
+        } catch (err) {
+          console.error('Error cargando disponibilidades:', err);
+          this.disponibilidades = [];
+        }
+      },
+
+      async crear() {
+        const session = loadSession();
+        if (!session) { alert('Debes iniciar sesión'); return; }
+        if (!this.fecha || !this.hora_inicio || !this.hora_fin) { alert('Completa todos los campos'); return; }
+
+        this.cargando = true;
+        try {
+          const vetId = session.appUser?.profile?.id;
+          const nueva = await crearDisponibilidad({ fecha: this.fecha, hora_inicio: this.hora_inicio, hora_fin: this.hora_fin, veterinarioId: vetId, jwt: session.jwt });
+          // refrescar lista
+          await this.cargar();
+          this.fecha = '';
+          this.hora_inicio = '';
+          this.hora_fin = '';
+        } catch (err) {
+          console.error('Error creando disponibilidad:', err);
+          alert(err.message || 'Error al crear disponibilidad');
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      async eliminar(id) {
+        if (!confirm('Eliminar esta disponibilidad?')) return;
+        const session = loadSession();
+        if (!session) { alert('Debes iniciar sesión'); return; }
+        try {
+          await eliminarDisponibilidad(id, session.jwt);
+          await this.cargar();
+        } catch (err) {
+          console.error('Error eliminando disponibilidad:', err);
+          alert(err.message || 'Error al eliminar');
+        }
+      }
+    }
+  }
+
+  (window as any).gestionDisponibilidad = gestionDisponibilidad;
+</script>
+
+<style>
+  .gestion-disponibilidad { background: white; padding: 1rem; border-radius: 8px; }
+</style>
