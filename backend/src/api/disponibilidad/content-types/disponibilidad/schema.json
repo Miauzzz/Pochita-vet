@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "disponibilidades",
+  "info": {
+    "singularName": "disponibilidad",
+    "pluralName": "disponibilidades",
+    "displayName": "disponibilidad"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fecha": {
+      "type": "date",
+      "required": true
+    },
+    "hora_inicio": {
+      "type": "time",
+      "required": true
+    },
+    "hora_fin": {
+      "type": "time",
+      "required": true
+    },
+    "disponible": {
+      "type": "boolean",
+      "default": true
+    },
+    "estado": {
+      "type": "enumeration",
+      "required": true,
+      "default": "disponible",
+      "enum": [
+        "disponible",
+        "ocupado",
+        "bloqueado"
+      ]
+    },
+    "veterinario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "disponibilidades"
+    },
+    "cita": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cita.cita",
+      "mappedBy": "disponibilidad"
+    }
+  }
+}

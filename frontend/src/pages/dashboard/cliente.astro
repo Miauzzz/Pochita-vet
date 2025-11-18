@@ -8,8 +8,7 @@ import DashboardLayout from '../../layouts/BaseDashboard.astro';
 
 <script type="module">
   import { requireRole } from "/src/lib/authHelpers.js";
-  
-  // Esperar a que el DOM esté completamente listo
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       console.log("DOM listo, ejecutando requireRole para cliente");

@@ -430,6 +430,216 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCitaCita extends Struct.CollectionTypeSchema {
+  collectionName: 'citas';
+  info: {
+    displayName: 'cita';
+    pluralName: 'citas';
+    singularName: 'cita';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    disponibilidad: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::disponibilidad.disponibilidad'
+    >;
+    estado: Schema.Attribute.Enumeration<
+      ['pendiente', 'confirmada', 'cancelada', 'atendida']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pendiente'>;
+    fecha: Schema.Attribute.Date & Schema.Attribute.Required;
+    hora: Schema.Attribute.Time & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::cita.cita'> &
+      Schema.Attribute.Private;
+    motivo: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    notificaciones: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notificacion.notificacion'
+    >;
+    paciente: Schema.Attribute.Relation<'manyToOne', 'api::paciente.paciente'>;
+    publishedAt: Schema.Attribute.DateTime;
+    recepcionista: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    veterinario: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiDisponibilidadDisponibilidad
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'disponibilidades';
+  info: {
+    displayName: 'disponibilidad';
+    pluralName: 'disponibilidades';
+    singularName: 'disponibilidad';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cita: Schema.Attribute.Relation<'oneToOne', 'api::cita.cita'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    disponible: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    estado: Schema.Attribute.Enumeration<
+      ['disponible', 'ocupado', 'bloqueado']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'disponible'>;
+    fecha: Schema.Attribute.Date & Schema.Attribute.Required;
+    hora_fin: Schema.Attribute.Time & Schema.Attribute.Required;
+    hora_inicio: Schema.Attribute.Time & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::disponibilidad.disponibilidad'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    veterinario: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiNotificacionNotificacion
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notificaciones';
+  info: {
+    displayName: 'notificacion';
+    pluralName: 'notificaciones';
+    singularName: 'notificacion';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cita_relacionada: Schema.Attribute.Relation<'manyToOne', 'api::cita.cita'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    destinatario: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    emisor: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    fecha_notificacion: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    leida: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notificacion.notificacion'
+    > &
+      Schema.Attribute.Private;
+    mensaje: Schema.Attribute.Text &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1000;
+      }>;
+    publishedAt: Schema.Attribute.DateTime;
+    tipo: Schema.Attribute.Enumeration<
+      ['cancelacion', 'recordatorio', 'general']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'general'>;
+    titulo: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPacientePaciente extends Struct.CollectionTypeSchema {
+  collectionName: 'pacientes';
+  info: {
+    displayName: 'paciente';
+    pluralName: 'pacientes';
+    singularName: 'paciente';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    citas: Schema.Attribute.Relation<'oneToMany', 'api::cita.cita'>;
+    color: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 50;
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    especie: Schema.Attribute.Enumeration<
+      ['Perro', 'Gato', 'Ave', 'Conejo', 'Roedor', 'Reptil', 'Otro']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Perro'>;
+    fecha_nacimiento: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::paciente.paciente'
+    > &
+      Schema.Attribute.Private;
+    nombre: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    peso: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 1000;
+          min: 0;
+        },
+        number
+      >;
+    propietario: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    raza: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    raza_verificada: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    sexo: Schema.Attribute.Enumeration<['Macho', 'Hembra', 'Sin determinar']>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiUsuarioUsuario extends Struct.CollectionTypeSchema {
   collectionName: 'usuarios';
   info: {
@@ -924,15 +1134,23 @@ export interface PluginUsersPermissionsUser
   };
   options: {
     draftAndPublish: false;
-    timestamps: true;
   };
   attributes: {
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    citas_recepcionista: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cita.cita'
+    >;
+    citas_veterinario: Schema.Attribute.Relation<'oneToMany', 'api::cita.cita'>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    disponibilidades: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::disponibilidad.disponibilidad'
+    >;
     email: Schema.Attribute.Email &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -944,6 +1162,15 @@ export interface PluginUsersPermissionsUser
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    notificaciones_enviadas: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notificacion.notificacion'
+    >;
+    notificaciones_recibidas: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notificacion.notificacion'
+    >;
+    pacientes: Schema.Attribute.Relation<'oneToMany', 'api::paciente.paciente'>;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
@@ -979,6 +1206,10 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::cita.cita': ApiCitaCita;
+      'api::disponibilidad.disponibilidad': ApiDisponibilidadDisponibilidad;
+      'api::notificacion.notificacion': ApiNotificacionNotificacion;
+      'api::paciente.paciente': ApiPacientePaciente;
       'api::usuario.usuario': ApiUsuarioUsuario;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

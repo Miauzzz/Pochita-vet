@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "citas",
+  "info": {
+    "singularName": "cita",
+    "pluralName": "citas",
+    "displayName": "cita"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fecha": {
+      "type": "date",
+      "required": true
+    },
+    "hora": {
+      "type": "time",
+      "required": true
+    },
+    "motivo": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "estado": {
+      "type": "enumeration",
+      "required": true,
+      "default": "pendiente",
+      "enum": [
+        "pendiente",
+        "confirmada",
+        "cancelada",
+        "atendida"
+      ]
+    },
+    "paciente": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::paciente.paciente",
+      "inversedBy": "citas"
+    },
+    "veterinario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "citas_veterinario"
+    },
+    "recepcionista": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "citas_recepcionista"
+    },
+    "disponibilidad": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::disponibilidad.disponibilidad",
+      "inversedBy": "cita"
+    },
+    "notificaciones": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::notificacion.notificacion",
+      "mappedBy": "cita_relacionada"
+    }
+  }
+}

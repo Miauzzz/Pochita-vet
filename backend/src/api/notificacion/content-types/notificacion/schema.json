@@ -1,0 +1,61 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notificaciones",
+  "info": {
+    "singularName": "notificacion",
+    "pluralName": "notificaciones",
+    "displayName": "notificacion"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tipo": {
+      "type": "enumeration",
+      "required": true,
+      "default": "general",
+      "enum": [
+        "cancelacion",
+        "recordatorio",
+        "general"
+      ]
+    },
+    "titulo": {
+      "type": "string",
+      "maxLength": 255,
+      "required": true
+    },
+    "mensaje": {
+      "type": "text",
+      "maxLength": 1000,
+      "required": true
+    },
+    "leida": {
+      "type": "boolean",
+      "default": false
+    },
+    "fecha_notificacion": {
+      "type": "datetime",
+      "required": true
+    },
+    "destinatario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "notificaciones_recibidas"
+    },
+    "emisor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "notificaciones_enviadas"
+    },
+    "cita_relacionada": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cita.cita",
+      "inversedBy": "notificaciones"
+    }
+  }
+}

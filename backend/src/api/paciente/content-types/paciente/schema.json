@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pacientes",
+  "info": {
+    "singularName": "paciente",
+    "pluralName": "pacientes",
+    "displayName": "paciente"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "especie": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Perro",
+      "enum": [
+        "Perro",
+        "Gato",
+        "Ave",
+        "Conejo",
+        "Roedor",
+        "Reptil",
+        "Otro"
+      ]
+    },
+    "raza": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "raza_verificada": {
+      "type": "boolean",
+      "default": false
+    },
+    "fecha_nacimiento": {
+      "type": "date"
+    },
+    "peso": {
+      "type": "decimal",
+      "min": 0,
+      "max": 1000
+    },
+    "sexo": {
+      "type": "enumeration",
+      "enum": [
+        "Macho",
+        "Hembra",
+        "Sin determinar"
+      ]
+    },
+    "color": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "propietario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "pacientes"
+    },
+    "citas": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cita.cita",
+      "mappedBy": "paciente"
+    }
+  }
+}
