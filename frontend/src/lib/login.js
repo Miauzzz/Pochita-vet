@@ -5,7 +5,7 @@ import {
   registerUser,
   loginUser,
   fetchMe,
-  createUsuarioCliente,
+  ensureUsuarioCliente,
   fetchUsuarioByEmail,
 } from "/src/lib/authAPI.js";
 
@@ -135,14 +135,17 @@ function setupRegisterForm() {
       const profile = await fetchMe(jwt);
       console.log("Perfil obtenido");
       
-      const usuario = await createUsuarioCliente(profile, jwt, fullname);
-      console.log("Usuario creado en collection");
+      // Buscar o crear el Usuario con reintentos (el lifecycle puede tardar)
+      await ensureUsuarioCliente(profile, jwt, fullname);
+      console.log("Usuario asegurado en collection");
 
-      const appUser = buildAppUser(profile, usuario);
-      saveSession(jwt, appUser, true);
-      console.log("Sesión guardada, procediendo a redirección");
+      // Limpiar cualquier sesión previa
+      clearSession();
+      console.log("Registro completado, redirigiendo al login");
       
-      getRoleAndRedirect(appUser);
+      // Mostrar mensaje de éxito y redirigir al login
+      alert("¡Registro exitoso! Por favor, inicia sesión con tus credenciales.");
+      window.location.href = "/login";
     } catch (err) {
       console.error("Error en proceso de registro:", err);
       alert(err.message || "Error al registrarse");

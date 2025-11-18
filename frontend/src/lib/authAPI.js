@@ -79,41 +79,105 @@ function slugifyNombre(nombre) {
     .replace(/\s+/g, "-");
 }
 
-/** Crea el registro en la collection "usuarios" como cliente */
-export async function createUsuarioCliente(profile, jwt, fullname) {
+/** Busca o crea el registro en la collection "usuarios" */
+export async function ensureUsuarioCliente(profile, jwt, fullname) {
   const slug = slugifyNombre(fullname);
-  console.log("Creando usuario en collection con slug:", slug);
+  console.log("Asegurando usuario en collection para:", profile.email);
 
-  const body = {
-    data: {
-      nombre_usuario: slug,
-      nombre: fullname,
-      correo: profile.email,
-      telefono: "",
-      tipo_usuario: "cliente",
-      fecha_registro: profile.createdAt ?? new Date().toISOString(),
-    },
-  };
-
-  const res = await fetch(`${STRAPI_URL}/api/usuarios`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwt}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const json = await res.json();
-  console.log("Respuesta de creación de usuario:", res.status, json);
+  // Intentar buscar el usuario con reintentos (el lifecycle puede tardar)
+  const maxRetries = 5;
+  let usuario = null;
   
-  if (!res.ok) {
-    console.error("Error al crear 'usuarios':", res.status, json);
-    throw new Error("No se pudo crear el perfil del usuario.");
+  for (let i = 0; i < maxRetries; i++) {
+    console.log(`Intento ${i + 1}/${maxRetries} - Buscando usuario...`);
+    
+    const searchUrl = `${STRAPI_URL}/api/usuarios?filters[correo][$eq]=${encodeURIComponent(profile.email)}`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+
+    const searchJson = await searchRes.json();
+    
+    if (searchRes.ok && searchJson.data?.[0]) {
+      usuario = searchJson.data[0];
+      console.log("Usuario encontrado:", usuario);
+      break;
+    }
+    
+    // Esperar 500ms antes del siguiente intento
+    if (i < maxRetries - 1) {
+      console.log("Usuario no encontrado aún, esperando...");
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
 
-  const usuario = json.data;
-  console.log("Usuario creado exitosamente:", usuario);
+  // Si después de los reintentos no existe, crearlo nosotros
+  if (!usuario) {
+    console.log("Usuario no encontrado después de reintentos, creándolo...");
+    
+    const createBody = {
+      data: {
+        nombre_usuario: slug,
+        nombre: fullname,
+        correo: profile.email,
+        telefono: "",
+        tipo_usuario: "cliente",
+        fecha_registro: profile.createdAt ?? new Date().toISOString(),
+        user: profile.id,
+      },
+    };
+
+    const createRes = await fetch(`${STRAPI_URL}/api/usuarios`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify(createBody),
+    });
+
+    const createJson = await createRes.json();
+    console.log("Respuesta de creación:", createRes.status, createJson);
+    
+    if (!createRes.ok) {
+      console.error("Error al crear usuario:", createRes.status, createJson);
+      throw new Error("No se pudo crear el perfil del usuario.");
+    }
+
+    usuario = createJson.data;
+    console.log("Usuario creado exitosamente:", usuario);
+  } else {
+    // Si existe pero no tiene nombre, actualizarlo
+    if (!usuario.nombre || usuario.nombre === '') {
+      console.log("Actualizando nombre del usuario existente...");
+      
+      const updateBody = {
+        data: {
+          nombre_usuario: slug,
+          nombre: fullname,
+        },
+      };
+
+      const updateRes = await fetch(`${STRAPI_URL}/api/usuarios/${usuario.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify(updateBody),
+      });
+
+      const updateJson = await updateRes.json();
+      
+      if (updateRes.ok) {
+        usuario = updateJson.data;
+        console.log("Nombre actualizado exitosamente");
+      } else {
+        console.warn("No se pudo actualizar el nombre, pero el usuario existe");
+      }
+    }
+  }
+
   return { ...usuario };
 }
 

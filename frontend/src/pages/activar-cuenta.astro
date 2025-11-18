@@ -1,0 +1,197 @@
+---
+// Página de activación - actualiza el nombre en Usuario
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/src/styles/global.css" />
+  <title>Activar Cuenta - Pochita Vet</title>
+  <style>[x-cloak]{display:none}</style>
+</head>
+<body class="bg-stone-700 text-white flex flex-col justify-center items-center p-4 min-h-screen">
+  
+  <script>
+    // Definir la función ANTES de que Alpine.js se cargue
+    window.activarCuenta = function() {
+      return {
+        email: '',
+        token: '',
+        nombre: '',
+        password: '',
+        confirmPassword: '',
+        error: '',
+        cargando: false,
+        activado: false,
+
+        init() {
+          console.log('Alpine.js inicializado');
+          const params = new URLSearchParams(window.location.search);
+          this.email = params.get('email') || '';
+          this.token = params.get('token') || '';
+
+          console.log('Parámetros de activación:', { email: this.email, token: this.token });
+
+          if (!this.email || !this.token) {
+            this.error = 'Link de activación inválido o incompleto';
+          }
+        },
+
+        async activar() {
+          this.error = '';
+
+          if (!this.nombre || this.nombre.length < 3) {
+            this.error = 'El nombre debe tener al menos 3 caracteres';
+            return;
+          }
+
+          if (!this.password || this.password.length < 8) {
+            this.error = 'La contraseña debe tener al menos 8 caracteres';
+            return;
+          }
+
+          if (this.password !== this.confirmPassword) {
+            this.error = 'Las contraseñas no coinciden';
+            return;
+          }
+
+          this.cargando = true;
+
+          try {
+            console.log('Enviando solicitud de activación...');
+
+            const res = await fetch('http://localhost:1337/api/usuarios/activar-cuenta', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: this.email,
+                token: this.token,
+                nombre: this.nombre,
+                password: this.password,
+              }),
+            });
+
+            const data = await res.json();
+            console.log('Respuesta de activación:', res.status, data);
+
+            if (!res.ok) {
+              throw new Error(data.error?.message || data?.message || 'Error al activar la cuenta');
+            }
+
+            console.log('Cuenta activada exitosamente');
+            this.activado = true;
+
+            if (data.jwt) {
+              localStorage.setItem('jwt', data.jwt);
+              localStorage.setItem('appUser', JSON.stringify(data.appUser));
+            }
+          } catch (err) {
+            console.error('Error al activar cuenta:', err);
+            this.error = err.message || 'Error al activar la cuenta';
+          } finally {
+            this.cargando = false;
+          }
+        },
+
+        irAlDashboard() {
+          const appUser = JSON.parse(localStorage.getItem('appUser') || '{}');
+          const tipo = appUser?.usuario?.tipo_usuario?.toLowerCase();
+
+          console.log('Redirigiendo al dashboard:', tipo);
+
+          const dashboards = {
+            cliente: '/dashboard/cliente',
+            veterinario: '/dashboard/veterinario',
+            recepcionista: '/dashboard/recepcionista',
+          };
+
+          window.location.href = dashboards[tipo] || '/login';
+        },
+      };
+    };
+  </script>
+  
+  <!-- Cargar Alpine.js DESPUÉS de definir la función -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <div class="w-full max-w-md mx-auto" x-data="activarCuenta()" x-init="init()">
+    <!-- Header con logo igual que login -->
+    <div class="bg-amber-600 w-full p-4 rounded-t-lg shadow-lg">
+      <a href="/login" class="text-white hover:text-amber-200 transition-colors">&larr; Volver al login</a>
+      <img src="/logo.webp" alt="Logo" class="w-50 mx-auto mb-4"/>
+    </div>
+
+    <!-- Formulario de activación -->
+    <div x-show="!activado" x-cloak class="bg-amber-600 rounded-b-lg shadow-lg w-full p-6">
+      <h1 class="mb-4 text-center text-xl font-semibold">Activar mi cuenta</h1>
+      
+      <form @submit.prevent="activar()">
+        <div class="bg-orange-300 rounded-lg px-4 py-3 mb-4 text-center text-gray-700 font-medium text-sm" x-text="email"></div>
+        
+        <label for="nombre" class="block mb-1 text-sm">Nombre completo:</label>
+        <input 
+          type="text"
+          id="nombre" 
+          x-model="nombre"
+          placeholder="ej: Dr. Juan Pérez"
+          required
+          minlength="3"
+          class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white bg-transparent placeholder-amber-200 focus:outline-none"
+        />
+        
+        <label for="password" class="block mb-1 text-sm">Nueva contraseña:</label>
+        <input 
+          type="password"
+          id="password" 
+          x-model="password"
+          placeholder="Mínimo 8 caracteres"
+          minlength="8"
+          required
+          class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white bg-transparent placeholder-amber-200 focus:outline-none"
+        />
+        
+        <label for="confirm-password" class="block mb-1 text-sm">Confirmar contraseña:</label>
+        <input 
+          type="password"
+          id="confirm-password" 
+          x-model="confirmPassword"
+          placeholder="Repite la contraseña"
+          minlength="8"
+          required
+          class="w-full mb-2 p-2 rounded-l-sm text-white border-b border-l-10 border-white bg-transparent placeholder-amber-200 focus:outline-none"
+        />
+        
+        <div x-show="error" x-cloak class="my-3 p-3 bg-red-500 bg-opacity-80 text-white rounded text-sm text-center" x-text="error"></div>
+        
+        <div class="flex justify-end mt-4">
+          <button 
+            type="submit" 
+            :disabled="cargando"
+            class="px-6 py-2 bg-black hover:bg-white hover:text-black rounded transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span x-show="!cargando">Activar cuenta</span>
+            <span x-show="cargando">Activando...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Pantalla de éxito -->
+    <div x-show="activado" x-cloak class="bg-amber-600 rounded-b-lg shadow-lg w-full p-8 text-center">
+      <div class="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-6">✓</div>
+      <h2 class="text-2xl font-semibold mb-2">¡Cuenta activada!</h2>
+      <p class="text-lg font-medium mb-2" x-text="nombre"></p>
+      <p class="text-sm text-amber-100 mb-6">Tu cuenta ha sido activada exitosamente</p>
+      <button 
+        @click="irAlDashboard()" 
+        class="px-6 py-2 bg-black hover:bg-white hover:text-black rounded transition-colors duration-200"
+      >
+        Ir a mi dashboard
+      </button>
+    </div>
+  </div>
+  
+</body>
+</html>

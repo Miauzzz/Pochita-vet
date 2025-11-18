@@ -1,0 +1,189 @@
+---
+// Sin cambios en el frontmatter
+---
+
+<div class="calendario-container" x-data="calendarioDisponibilidad()">
+  <!-- Selector de mes -->
+  <div class="calendario-header">
+    <button @click="mesAnterior()" class="btn-nav">←</button>
+    <h3 x-text="nombreMes + ' ' + anio"></h3>
+    <button @click="mesSiguiente()" class="btn-nav">→</button>
+  </div>
+
+  <!-- Días de la semana -->
+  <div class="calendario-dias-semana">
+    <div>Lun</div>
+    <div>Mar</div>
+    <div>Mié</div>
+    <div>Jue</div>
+    <div>Vie</div>
+    <div>Sáb</div>
+    <div>Dom</div>
+  </div>
+
+  <!-- Días del mes -->
+  <div class="calendario-dias">
+    <template x-for="dia in diasMes" :key="dia.fecha">
+      <div 
+        class="dia"
+        :class="{ 'dia-hoy': dia.esHoy, 'dia-disponible': dia.disponible }"
+        @click="seleccionarDia(dia)"
+      >
+        <span x-text="dia.numero"></span>
+      </div>
+    </template>
+  </div>
+
+  <!-- Info del día seleccionado -->
+  <div x-show="diaSeleccionado" class="info-dia">
+    <h4>Horarios disponibles:</h4>
+    <div x-text="'Fecha: ' + diaSeleccionado?.fecha"></div>
+  </div>
+</div>
+
+<script>
+  // @ts-ignore
+  import { obtenerDisponibilidades } from '../../../lib/disponibilidad';
+
+  function calendarioDisponibilidad() {
+    return {
+      mes: new Date().getMonth(),
+      anio: new Date().getFullYear(),
+      diasMes: [] as any[],
+      diaSeleccionado: null,
+      
+      get nombreMes() {
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        return meses[this.mes];
+      },
+
+      async init() {
+        await this.cargarDisponibilidades();
+        this.generarDiasMes();
+      },
+
+      async cargarDisponibilidades() {
+        const disponibilidades = await obtenerDisponibilidades();
+        console.log('Disponibilidades cargadas:', disponibilidades);
+      },
+
+      generarDiasMes() {
+        this.diasMes = [];
+        const primerDia = new Date(this.anio, this.mes, 1);
+        const ultimoDia = new Date(this.anio, this.mes + 1, 0);
+        const hoy = new Date();
+
+        for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+          const fecha = new Date(this.anio, this.mes, dia);
+          this.diasMes.push({
+            numero: dia,
+            fecha: fecha.toISOString().split('T')[0],
+            esHoy: fecha.toDateString() === hoy.toDateString(),
+            disponible: Math.random() > 0.5
+          });
+        }
+      },
+
+      mesAnterior() {
+        if (this.mes === 0) {
+          this.mes = 11;
+          this.anio--;
+        } else {
+          this.mes--;
+        }
+        this.generarDiasMes();
+      },
+
+      mesSiguiente() {
+        if (this.mes === 11) {
+          this.mes = 0;
+          this.anio++;
+        } else {
+          this.mes++;
+        }
+        this.generarDiasMes();
+      },
+
+      seleccionarDia(dia: any) {
+        this.diaSeleccionado = dia;
+        console.log('Día seleccionado:', dia);
+      }
+    }
+  }
+
+  (window as any).calendarioDisponibilidad = calendarioDisponibilidad;
+</script>
+
+<style>
+  .calendario-container {
+    max-width: 600px;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .calendario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .btn-nav {
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .calendario-dias-semana {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .calendario-dias {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+  }
+
+  .dia {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dia:hover {
+    background: #f3f4f6;
+  }
+
+  .dia-hoy {
+    background: #dbeafe;
+    border-color: #3b82f6;
+  }
+
+  .dia-disponible {
+    background: #dcfce7;
+    border-color: #22c55e;
+  }
+
+  .info-dia {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 4px;
+  }
+</style>

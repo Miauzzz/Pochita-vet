@@ -1,162 +1,188 @@
-// src/lib/authHelpers.js
+const STRAPI_URL = import.meta.env.PUBLIC_STRAPI_URL;
 
-const STORAGE_KEY_JWT = "jwt";
-const STORAGE_KEY_USER = "user";
+if (!STRAPI_URL) {
+  console.error("PUBLIC_STRAPI_URL no está definido en el archivo .env");
+  throw new Error("PUBLIC_STRAPI_URL no está configurado. Verifica tu archivo .env");
+}
 
-/** Junta User (plugin) + Usuario (collection) en un solo objeto */
+// ========== Funciones de Autenticación ==========
+
+/**
+ * Construye el objeto appUser unificando profile (users-permissions) y usuario (collection)
+ */
 export function buildAppUser(profile, usuario) {
-  const appUser = { authUser: profile, usuario };
-  console.log("buildAppUser creado:", appUser);
-  return appUser;
+  return {
+    profile: {
+      id: profile.id,
+      email: profile.email,
+      username: profile.username,
+      confirmed: profile.confirmed,
+    },
+    usuario: {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      correo: usuario.correo,
+      telefono: usuario.telefono,
+      tipo_usuario: usuario.tipo_usuario,
+    },
+  };
 }
 
 /**
- * Guarda la sesión.
- * persist = true  -> localStorage (mantener sesión iniciada)
- * persist = false -> sessionStorage (se pierde al cerrar pestaña/navegador)
+ * Guarda la sesión en localStorage o sessionStorage
  */
-export function saveSession(jwt, appUser, persist = true) {
-  const storage = persist ? localStorage : sessionStorage;
-  const storageType = persist ? "localStorage" : "sessionStorage";
-  
-  console.log("Guardando sesión en", storageType);
-  console.log("JWT:", jwt ? jwt.substring(0, 20) + "..." : "null");
-  console.log("appUser:", appUser);
-  
-  storage.setItem(STORAGE_KEY_JWT, jwt);
-  storage.setItem(STORAGE_KEY_USER, JSON.stringify(appUser));
-  
-  console.log("Sesión guardada correctamente");
+export function saveSession(jwt, appUser, remember = false) {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem('jwt', jwt);
+  storage.setItem('appUser', JSON.stringify(appUser));
+  console.log('Sesión guardada en', remember ? 'localStorage' : 'sessionStorage');
 }
 
-/** Intenta cargar sesión, primero de localStorage, luego de sessionStorage */
+/**
+ * Carga la sesión desde localStorage o sessionStorage
+ */
 export function loadSession() {
-  console.log("Intentando cargar sesión...");
+  const jwt = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
+  const appUserStr = localStorage.getItem('appUser') || sessionStorage.getItem('appUser');
   
-  // 1) Sesión persistente
-  let raw = localStorage.getItem(STORAGE_KEY_USER);
-  let jwt = localStorage.getItem(STORAGE_KEY_JWT);
-  if (jwt && raw) {
-    try {
-      const appUser = JSON.parse(raw);
-      console.log("Sesión cargada desde localStorage:", appUser);
-      return { jwt, appUser, persist: true };
-    } catch (err) {
-      console.error("Error parseando sesión de localStorage:", err);
-    }
+  if (!jwt || !appUserStr) {
+    return null;
   }
-
-  // 2) Sesión temporal (solo pestaña actual)
-  raw = sessionStorage.getItem(STORAGE_KEY_USER);
-  jwt = sessionStorage.getItem(STORAGE_KEY_JWT);
-  if (jwt && raw) {
-    try {
-      const appUser = JSON.parse(raw);
-      console.log("Sesión cargada desde sessionStorage:", appUser);
-      return { jwt, appUser, persist: false };
-    } catch (err) {
-      console.error("Error parseando sesión de sessionStorage:", err);
-      return null;
-    }
-  }
-
-  console.log("No se encontró sesión");
-  return null;
-}
-
-/** Limpia sesión de ambos storages */
-export function clearSession() {
-  console.log("Limpiando sesión...");
-  localStorage.removeItem(STORAGE_KEY_JWT);
-  localStorage.removeItem(STORAGE_KEY_USER);
-  sessionStorage.removeItem(STORAGE_KEY_JWT);
-  sessionStorage.removeItem(STORAGE_KEY_USER);
-  console.log("Sesión limpiada");
-}
-
-/** Logout reutilizable */
-export function logout(redirect = "/login") {
-  console.log("Ejecutando logout, redirigiendo a:", redirect);
+  
   try {
-    clearSession();
+    const appUser = JSON.parse(appUserStr);
+    return { jwt, appUser };
   } catch (err) {
-    console.error("Error al limpiar sesión:", err);
+    console.error('Error al parsear appUser:', err);
+    clearSession();
+    return null;
   }
-  window.location.href = redirect;
-}
-
-/** ¿Hay sesión activa? */
-export function isAuthenticated() {
-  const hasSession = !!loadSession();
-  console.log("isAuthenticated:", hasSession);
-  return hasSession;
-}
-
-/** Redirige según tipo_usuario de la collection "usuarios" */
-export function getRoleAndRedirect(appUser) {
-  console.log("getRoleAndRedirect llamado con:", appUser);
-  
-  if (!appUser || !appUser.usuario) {
-    console.error("appUser o appUser.usuario es null/undefined");
-    return;
-  }
-
-  const role = appUser.usuario.tipo_usuario?.toLowerCase();
-  console.log("Rol detectado:", role);
-  
-  const valid = ["cliente", "recepcionista", "veterinario"];
-  if (!role || !valid.includes(role)) {
-    console.error("Rol inválido o no encontrado:", role);
-    return;
-  }
-
-  const redirectUrl = `/dashboard/${role}`;
-  console.log("Redirigiendo a:", redirectUrl);
-  window.location.href = redirectUrl;
 }
 
 /**
- * Protege una página del dashboard por rol.
- * allowedRoles: ['cliente'], ['veterinario'], etc.
- * - Si no hay sesión -> /login
- * - Si hay sesión pero rol distinto -> /dashboard/{rol_real}
+ * Limpia la sesión de ambos storages
  */
-export function requireRole(allowedRoles = []) {
-  // Prevenir ejecución múltiple
-  if (window.__roleCheckInProgress) {
-    console.log("requireRole ya en progreso, evitando duplicado");
-    return;
-  }
-  window.__roleCheckInProgress = true;
+export function clearSession() {
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('appUser');
+  sessionStorage.removeItem('jwt');
+  sessionStorage.removeItem('appUser');
+  console.log('Sesión limpiada');
+}
+
+/**
+ * Redirige al dashboard según el tipo de usuario
+ */
+export function getRoleAndRedirect(appUser) {
+  const tipo = appUser?.usuario?.tipo_usuario?.toLowerCase();
   
-  console.log("requireRole ejecutado, roles permitidos:", allowedRoles);
+  console.log('Redirigiendo según tipo:', tipo);
   
+  const dashboards = {
+    cliente: '/dashboard/cliente',
+    veterinario: '/dashboard/veterinario',
+    recepcionista: '/dashboard/recepcionista',
+  };
+  
+  const url = dashboards[tipo] || '/login';
+  console.log('Redirigiendo a:', url);
+  window.location.href = url;
+}
+
+/**
+ * Cierra sesión y redirige a la página especificada
+ */
+export function logout(redirectTo = '/login') {
+  clearSession();
+  console.log('Logout ejecutado, redirigiendo a:', redirectTo);
+  window.location.href = redirectTo;
+}
+
+/**
+ * Requiere un rol específico para acceder a la página
+ * Redirige al login si no está autenticado o al dashboard correcto si el rol no coincide
+ */
+export async function requireRole(allowedRoles = []) {
   const session = loadSession();
-  if (!session || !session.appUser || !session.appUser.usuario) {
-    console.log("Sin sesión, redirigiendo a /login");
-    window.location.href = "/login";
+  
+  if (!session || !session.appUser) {
+    console.warn('No hay sesión, redirigiendo a login');
+    window.location.href = '/login';
     return;
   }
-
-  const role = session.appUser.usuario.tipo_usuario?.toLowerCase();
-  const valid = ["cliente", "recepcionista", "veterinario"];
   
-  if (!role || !valid.includes(role)) {
-    console.warn("Rol inválido en sesión, limpiando y redirigiendo");
+  // Verificar que el usuario aún exista en el backend
+  try {
+    const STRAPI_URL = import.meta.env.PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    const response = await fetch(`${STRAPI_URL}/api/users/me`, {
+      headers: {
+        Authorization: `Bearer ${session.jwt}`,
+      },
+    });
+    
+    if (!response.ok) {
+      console.warn('Usuario no válido en backend, limpiando sesión');
+      clearSession();
+      window.location.href = '/login';
+      return;
+    }
+    
+    const user = await response.json();
+    console.log('Usuario verificado en backend:', user.email);
+  } catch (error) {
+    console.error('Error al verificar usuario:', error);
     clearSession();
-    window.location.href = "/login";
+    window.location.href = '/login';
     return;
   }
-
-  if (!Array.isArray(allowedRoles)) {
-    allowedRoles = [allowedRoles];
-  }
   
-  if (!allowedRoles.includes(role)) {
-    console.log("Rol", role, "no permitido aquí, redirigiendo a su dashboard");
-    window.location.href = `/dashboard/${role}`;
-  } else {
-    console.log("Acceso permitido para rol:", role);
-    window.__roleCheckInProgress = false;
+  const tipo = session.appUser?.usuario?.tipo_usuario?.toLowerCase();
+  
+  if (!allowedRoles.includes(tipo)) {
+    console.warn(`Rol "${tipo}" no permitido. Roles permitidos:`, allowedRoles);
+    getRoleAndRedirect(session.appUser);
+  }
+}
+
+// ========== Funciones de Disponibilidad ==========
+
+
+// Obtener todas las disponibilidades
+export async function obtenerDisponibilidades() {
+  try {
+    const response = await fetch(`${STRAPI_URL}/api/disponibilidads?populate=*`);
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error al obtener disponibilidades:', error);
+    return [];
+  }
+}
+
+// Obtener disponibilidad por veterinario
+export async function obtenerDisponibilidadPorVeterinario(veterinarioId) {
+  try {
+    const response = await fetch(
+      `${STRAPI_URL}/api/disponibilidads?filters[veterinario][id][$eq]=${veterinarioId}&populate=*`
+    );
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error al obtener disponibilidad:', error);
+    return [];
+  }
+}
+
+// Obtener disponibilidad por fecha
+export async function obtenerDisponibilidadPorFecha(fecha) {
+  try {
+    const response = await fetch(
+      `${STRAPI_URL}/api/disponibilidads?filters[fecha][$eq]=${fecha}&populate=*`
+    );
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error al obtener disponibilidad:', error);
+    return [];
   }
 }

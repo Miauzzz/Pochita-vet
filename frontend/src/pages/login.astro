@@ -54,7 +54,7 @@
                 class="bg-amber-600 rounded-b-lg shadow-lg w-full overflow-hidden"
             >
                 <!-- Login form -->
-                <form id="login-form" class="w-full bg-transparent p-6" @submit.prevent>
+                <form id="login-form" class="w-full bg-transparent p-6">
                     <h1 class="mb-4 text-center text-xl font-semibold">Acceso a la plataforma</h1>
                     <label for="username" class="block mb-1 text-sm">Correo Electrónico:</label>
                     <input x-ref="loginUser" type="text" id="username" name="identifier" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
@@ -80,7 +80,7 @@
                 class="bg-amber-600 rounded-b-lg shadow-lg w-full overflow-hidden"
             >
                 <!-- Register form -->
-                <form id="register-form" class="w-full bg-transparent p-6" @submit.prevent>
+                <form id="register-form" class="w-full bg-transparent p-6">
                     <h1 class="mb-4 text-center text-xl font-semibold">Registro</h1>
                     <label for="fullname" class="block mb-1 text-sm">Nombre completo:</label>
                     <input x-ref="regUser" type="text" id="fullname" name="fullname" required class="w-full mb-3 p-2 rounded-l-sm text-white border-b border-l-10 border-white">
@@ -98,9 +98,19 @@
         </div>
     </div>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script type="module" is:inline>
+    <script type="module">
         import { initLoginPage } from "/src/lib/login.js";
-        initLoginPage();
+        
+        // Esperar a que el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('Inicializando página de login...');
+                initLoginPage();
+            });
+        } else {
+            console.log('DOM ya cargado, inicializando página de login...');
+            initLoginPage();
+        }
     </script>
 </body>
 </html>

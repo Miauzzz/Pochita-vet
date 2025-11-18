@@ -10,12 +10,12 @@ import DashboardLayout from '../../layouts/BaseDashboard.astro';
   import { requireRole } from "/src/lib/authHelpers.js";
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       console.log("DOM listo, ejecutando requireRole para cliente");
-      requireRole(["cliente"]);
+      await requireRole(["cliente"]);
     });
   } else {
     console.log("DOM ya listo, ejecutando requireRole para cliente");
-    requireRole(["cliente"]);
+    await requireRole(["cliente"]);
   }
 </script>

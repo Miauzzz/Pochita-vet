@@ -1,0 +1,181 @@
+---
+import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/CalendarioDisponibilidad.astro';
+---
+
+<section class="seccion-disponibilidad">
+  <!-- Header de la sección -->
+  <div class="seccion-header">
+    <h2>📅 Gestión de Disponibilidad</h2>
+    <p class="descripcion">Consulta y administra los horarios disponibles de los veterinarios</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-container" x-data="{ veterinarioSeleccionado: '' }">
+    <div class="filtro">
+      <label for="veterinario">Filtrar por veterinario:</label>
+      <select 
+        id="veterinario" 
+        x-model="veterinarioSeleccionado"
+        class="select-veterinario"
+      >
+        <option value="">Todos los veterinarios</option>
+        <!-- Aquí luego cargaremos veterinarios dinámicamente desde Strapi -->
+        <option value="1">Dr. Juan Pérez</option>
+        <option value="2">Dra. María González</option>
+        <option value="3">Dr. Carlos Rojas</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Calendario -->
+  <div class="calendario-wrapper">
+    <CalendarioDisponibilidad />
+  </div>
+
+  <!-- Información adicional -->
+  <div class="info-adicional">
+    <div class="leyenda">
+      <h3>Leyenda:</h3>
+      <div class="leyenda-items">
+        <div class="leyenda-item">
+          <span class="color-box dia-hoy"></span>
+          <span>Día actual</span>
+        </div>
+        <div class="leyenda-item">
+          <span class="color-box dia-disponible"></span>
+          <span>Días con disponibilidad</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .seccion-disponibilidad {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+  }
+
+  .seccion-header {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 1rem;
+  }
+
+  .seccion-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .descripcion {
+    color: #6b7280;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  /* Filtros */
+  .filtros-container {
+    background: #f9fafb;
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .filtro label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+
+  .select-veterinario {
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .select-veterinario:hover {
+    border-color: #3b82f6;
+  }
+
+  .select-veterinario:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Calendario */
+  .calendario-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+
+  /* Info adicional */
+  .info-adicional {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .leyenda h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 1rem 0;
+  }
+
+  .leyenda-items {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .color-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+  }
+
+  .color-box.dia-hoy {
+    background: #dbeafe;
+    border-color: #3b82f6;
+  }
+
+  .color-box.dia-disponible {
+    background: #dcfce7;
+    border-color: #22c55e;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .seccion-disponibilidad {
+      padding: 1.5rem;
+    }
+
+    .seccion-header h2 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
