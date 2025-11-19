@@ -1,0 +1,152 @@
+---
+---
+
+<div class="mis-citas-container bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+  <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+    <span>📅</span>
+    <span>Mis Citas</span>
+  </h2>
+  
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <button onclick="filtrarCitas('todas')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors" data-filtro="todas">
+      Todas
+    </button>
+    <button onclick="filtrarCitas('pendiente')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-yellow-100 transition-colors" data-filtro="pendiente">
+      ⏳ Pendientes
+    </button>
+    <button onclick="filtrarCitas('confirmada')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-green-100 transition-colors" data-filtro="confirmada">
+      ✓ Confirmadas
+    </button>
+    <button onclick="filtrarCitas('cancelada')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-red-100 transition-colors" data-filtro="cancelada">
+      ✗ Canceladas
+    </button>
+  </div>
+  
+  <div id="mis-citas-lista" class="space-y-3">
+    <p class="text-gray-500 text-center py-6 text-sm">Cargando tus citas...</p>
+  </div>
+</div>
+
+<script>
+  import { loadSession } from '../../../lib/authHelpers.js';
+
+  const STRAPI_URL = 'http://localhost:1337';
+  let todasLasCitas: any[] = [];
+  let filtroActual = 'todas';
+
+  async function cargarMisCitas() {
+    const session = loadSession();
+    const jwt = session?.jwt;
+
+    if (!jwt) {
+      console.error('No hay JWT');
+      return;
+    }
+
+    try {
+      console.log('🔍 Cargando mis citas (cliente)...');
+      
+      const response = await fetch(`${STRAPI_URL}/api/citas?populate=*&sort[0]=fecha:desc&sort[1]=hora:desc`, {
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Mis citas recibidas:', data.data.length);
+      console.log('🐞 DEBUG - Primera cita:', data.data[0]);
+      
+      todasLasCitas = data.data;
+      mostrarCitas(filtroActual);
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      document.getElementById('mis-citas-lista')!.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-red-800 text-sm">Error al cargar citas: ${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  (window as any).filtrarCitas = function(filtro: string) {
+    filtroActual = filtro;
+    
+    // Actualizar botones
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+      if (btn.getAttribute('data-filtro') === filtro) {
+        btn.classList.add('bg-gray-700', 'text-white');
+        btn.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+      } else {
+        btn.classList.remove('bg-gray-700', 'text-white');
+        btn.classList.add('bg-gray-200', 'hover:bg-gray-300');
+      }
+    });
+    
+    mostrarCitas(filtro);
+  };
+
+  function mostrarCitas(filtro: string) {
+    const container = document.getElementById('mis-citas-lista')!;
+    
+    let citasFiltradas = filtro === 'todas' 
+      ? todasLasCitas 
+      : todasLasCitas.filter(c => c.estado === filtro);
+    
+    if (citasFiltradas.length === 0) {
+      container.innerHTML = `<p class="text-gray-500 text-center py-6 text-sm">No tienes citas ${filtro === 'todas' ? '' : `en estado "${filtro}"`}</p>`;
+      return;
+    }
+
+    const html = citasFiltradas.map(cita => {
+      const estadoColor = cita.estado === 'pendiente' ? 'border-l-yellow-400 bg-yellow-50' 
+        : cita.estado === 'confirmada' ? 'border-l-green-400 bg-green-50'
+        : 'border-l-gray-400 bg-gray-50';
+      
+      const veterinario = cita.veterinario?.nombreCompleto || cita.veterinario?.username || 'N/A';
+      const paciente = cita.paciente?.nombre || '(Sin asignar)';
+      const horaFormateada = cita.hora ? cita.hora.substring(0, 5) : 'N/A';
+      
+      const estadoBadge = cita.estado === 'pendiente' ? '<span class="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">Pendiente</span>'
+        : cita.estado === 'confirmada' ? '<span class="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">Confirmada</span>'
+        : '<span class="bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">Cancelada</span>';
+      
+      return `
+        <div class="${estadoColor} border-l-4 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <p class="font-bold text-sm text-gray-900">📅 ${cita.fecha}</p>
+              <p class="text-xs text-gray-600">⏰ ${horaFormateada}</p>
+            </div>
+            ${estadoBadge}
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs"><span class="font-semibold">🐾 Mascota:</span> ${paciente}</p>
+            <p class="text-xs"><span class="font-semibold">👨‍⚕️ Veterinario:</span> Dr. ${veterinario}</p>
+            ${cita.motivo ? `<p class="text-xs"><span class="font-semibold">📝 Motivo:</span> ${cita.motivo}</p>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Cargar al iniciar
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarMisCitas();
+    // Activar filtro "todas" por defecto
+    setTimeout(() => {
+      const btnTodas = document.querySelector('[data-filtro="todas"]');
+      if (btnTodas) {
+        btnTodas.classList.add('bg-gray-700', 'text-white');
+        btnTodas.classList.remove('bg-gray-200');
+      }
+    }, 100);
+  });
+</script>

@@ -70,9 +70,23 @@ export default factories.createCoreController('api::disponibilidad.disponibilida
         populate: ['veterinario', 'cita', 'cita.paciente'], // Asegurar populate
       });
 
+      // Filtrar disponibilidades que tienen citas activas (pendiente o confirmada)
+      const resultsFiltrados = results.filter((disp: any) => {
+        // Si tiene una cita asociada (relación oneToOne), verificar su estado
+        if (disp.cita) {
+          const citaEstado = disp.cita.estado;
+          // Excluir si la cita está pendiente o confirmada
+          if (citaEstado === 'pendiente' || citaEstado === 'confirmada') {
+            console.log(`Disponibilidad ${disp.id} (${disp.fecha} ${disp.hora_inicio}) excluida - cita ${citaEstado}`);
+            return false;
+          }
+        }
+        return true;
+      });
+
       // Enriquecer resultados con datos del perfil Usuario
       const resultsEnriquecidos = await Promise.all(
-        results.map(async (disp: any) => {
+        resultsFiltrados.map(async (disp: any) => {
           if (disp.veterinario?.id) {
             const perfil = await strapi.query('api::usuario.usuario').findOne({
               where: { user: disp.veterinario.id },
@@ -85,6 +99,8 @@ export default factories.createCoreController('api::disponibilidad.disponibilida
           return disp;
         })
       );
+
+      console.log(`Disponibilidades totales: ${results.length}, filtradas: ${resultsEnriquecidos.length}`);
 
       return this.transformResponse(resultsEnriquecidos, { pagination });
     } catch (error) {

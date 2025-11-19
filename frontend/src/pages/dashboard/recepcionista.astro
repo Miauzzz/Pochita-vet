@@ -1,31 +1,274 @@
 ---
-import DashboardLayout from '../../layouts/BaseDashboard.astro';
-import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/CalendarioDisponibilidad.astro';
+import BaseDashboard from '../../layouts/BaseDashboard.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Loading from '../../components/ui/Loading.astro';
 ---
 
-<DashboardLayout>
-  <div class="flex gap-6 flex-col lg:flex-row">
-    <!-- Calendario (izquierda) -->
-    <div class="lg:w-[65%]">
-      <CalendarioDisponibilidad />
-    </div>
-    
-    <!-- Notificaciones (derecha) -->
-    <div class="lg:w-[35%]">
-      <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 sticky top-4">
-        <h3 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-          </svg>
-          Notificaciones
-        </h3>
-        <div class="space-y-3">
-          <p class="text-gray-500 text-sm text-center py-8">No hay notificaciones nuevas</p>
+<BaseDashboard>
+  <div class="max-w-7xl mx-auto p-4">
+    <div class="flex flex-col lg:flex-row gap-4">
+      
+      <!-- Panel Principal: Gestión de Citas -->
+      <div class="flex-1 space-y-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold text-gray-900">Panel Recepcionista</h1>
+          <div class="text-sm text-gray-600" id="user-info">Cargando...</div>
+        </div>
+
+        <!-- Filtros -->
+        <Card padding="sm">
+          <div class="flex gap-2 flex-wrap">
+            <Button size="sm" variant="primary" data-filter="todas">Todas</Button>
+            <Button size="sm" variant="ghost" data-filter="pendiente">Pendientes</Button>
+            <Button size="sm" variant="ghost" data-filter="confirmada">Confirmadas</Button>
+            <Button size="sm" variant="ghost" data-filter="cancelada">Canceladas</Button>
+          </div>
+        </Card>
+
+        <!-- Lista de Citas -->
+        <div id="citas-container" class="space-y-3">
+          <Card padding="md">
+            <Loading size="sm" text="Cargando citas..." />
+          </Card>
         </div>
       </div>
+
+      <!-- Panel Lateral: Notificaciones -->
+      <aside class="w-full lg:w-80 shrink-0 order-first lg:order-last">
+        <Card padding="sm" class="sticky top-4">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+            <span class="text-base animate-pulse">🔔</span>
+            <h2 class="text-sm font-bold text-gray-900">Citas Pendientes</h2>
+            <span id="badge-pendientes" class="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+          </div>
+          
+          <div id="notificaciones-container" class="space-y-2 max-h-[600px] overflow-y-auto">
+            <Loading size="sm" />
+          </div>
+        </Card>
+      </aside>
+
     </div>
   </div>
-</DashboardLayout>
+</BaseDashboard>
+
+<script>
+  import { loadSession } from '../../lib/authHelpers.js';
+  import { CitasAPI } from '../../lib/api/citas.js';
+
+  let session, citasAPI;
+  let citasData = [];
+  let filtroActual = 'todas';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    session = loadSession();
+    if (!session?.jwt) {
+      window.location.href = '/login';
+      return;
+    }
+
+    citasAPI = new CitasAPI(session.jwt);
+    document.getElementById('user-info').textContent = session.appUser.profile.email;
+
+    await cargarCitas();
+    setupEventos();
+    
+    // Recargar cada 30s
+    setInterval(cargarCitas, 30000);
+  });
+
+  async function cargarCitas() {
+    try {
+      citasData = await citasAPI.getMisCitas();
+      renderCitas();
+      renderNotificaciones();
+    } catch (error) {
+      console.error('Error cargando citas:', error);
+      document.getElementById('citas-container').innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-center text-red-600 text-sm font-medium">Error al cargar citas</p>
+          <p class="text-center text-red-500 text-xs mt-1">${error.message}</p>
+        </div>
+      `;
+      document.getElementById('notificaciones-container').innerHTML = `
+        <p class="text-xs text-red-500 text-center py-4">Error al cargar notificaciones</p>
+      `;
+    }
+  }
+
+  function renderCitas() {
+    const container = document.getElementById('citas-container');
+    const citasFiltradas = filtroActual === 'todas' 
+      ? citasData 
+      : citasData.filter(c => c.estado === filtroActual);
+
+    if (citasFiltradas.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 text-gray-500 text-sm">
+          No hay citas ${filtroActual === 'todas' ? '' : filtroActual + 's'}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = citasFiltradas.map(c => {
+      const estadoClasses = {
+        pendiente: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        confirmada: 'bg-green-100 text-green-800 border-green-200',
+        cancelada: 'bg-red-100 text-red-800 border-red-200'
+      };
+      
+      const estadoTextos = {
+        pendiente: 'Pendiente',
+        confirmada: 'Confirmada',
+        cancelada: 'Cancelada'
+      };
+
+      return `
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <p class="font-semibold text-gray-900">${formatearFecha(c.fecha)} • ${c.hora?.substring(0, 5)}</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${estadoClasses[c.estado]}">
+                  ${estadoTextos[c.estado]}
+                </span>
+              </div>
+              
+              <div class="text-sm text-gray-600 space-y-1">
+                <p>🐾 ${c.paciente?.nombre || '(Sin mascota)'}</p>
+                <p>👤 ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || c.paciente?.propietario?.email || '(Sin datos)'}</p>
+                <p>👨‍⚕️ Dr. ${c.veterinario?.nombreCompleto || c.veterinario?.username || 'N/A'}</p>
+                ${c.motivo ? `<p class="text-xs text-gray-500 italic">📝 ${c.motivo}</p>` : ''}
+              </div>
+            </div>
+          </div>
+
+          ${c.estado === 'pendiente' ? `
+            <div class="flex gap-2 pt-3 border-t border-gray-100">
+              <button 
+                onclick="confirmarCita('${c.documentId}')" 
+                class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                ✓ Confirmar
+              </button>
+              <button 
+                onclick="rechazarCita('${c.documentId}')" 
+                class="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                ✗ Rechazar
+              </button>
+            </div>
+          ` : c.estado === 'confirmada' ? `
+            <button 
+              onclick="cancelarCita('${c.documentId}')" 
+              class="w-full mt-3 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderNotificaciones() {
+    const container = document.getElementById('notificaciones-container');
+    const pendientes = citasData.filter(c => c.estado === 'pendiente');
+    
+    document.getElementById('badge-pendientes').textContent = pendientes.length;
+
+    if (pendientes.length === 0) {
+      container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">Sin citas pendientes</p>';
+      return;
+    }
+
+    container.innerHTML = pendientes.slice(0, 10).map(c => `
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs hover:shadow-sm transition-shadow cursor-pointer" onclick="scrollToCita(${c.id})">
+        <p class="font-semibold text-gray-900 mb-1">${formatearFecha(c.fecha)} • ${c.hora?.substring(0, 5)}</p>
+        <p class="text-gray-700">🐾 ${c.paciente?.nombre || '(Sin mascota)'}</p>
+        <p class="text-gray-600">👤 ${c.paciente?.propietario?.username || 'N/A'}</p>
+      </div>
+    `).join('');
+  }
+
+  function setupEventos() {
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remover estilo activo de todos los botones
+        document.querySelectorAll('[data-filter]').forEach(b => {
+          b.classList.remove('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+          b.classList.add('bg-transparent', 'text-gray-700', 'hover:bg-gray-100');
+        });
+        
+        // Aplicar estilo activo al botón clickeado
+        btn.classList.remove('bg-transparent', 'text-gray-700', 'hover:bg-gray-100');
+        btn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        
+        filtroActual = btn.dataset.filter;
+        console.log('🛠️ Filtro cambiado a:', filtroActual);
+        renderCitas();
+      });
+    });
+  }
+
+  window.confirmarCita = async (documentId) => {
+    if (!confirm('¿Confirmar esta cita?')) return;
+    
+    try {
+      await citasAPI.confirmarCita(documentId);
+      await cargarCitas();
+      alert('✅ Cita confirmada');
+    } catch (error) {
+      console.error('Error confirmando cita:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+
+  window.rechazarCita = async (documentId) => {
+    if (!confirm('¿Rechazar esta cita?')) return;
+    
+    try {
+      await citasAPI.cancelarCita(documentId);
+      await cargarCitas();
+      alert('❌ Cita rechazada');
+    } catch (error) {
+      console.error('Error rechazando cita:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+
+  window.cancelarCita = async (documentId) => {
+    if (!confirm('¿Cancelar esta cita?')) return;
+    
+    try {
+      await citasAPI.cancelarCita(documentId);
+      await cargarCitas();
+      alert('🚫 Cita cancelada');
+    } catch (error) {
+      console.error('Error cancelando cita:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+
+  window.scrollToCita = (id) => {
+    const filtroBtn = document.querySelector('[data-filter="pendiente"]');
+    if (filtroBtn) filtroBtn.click();
+    setTimeout(() => {
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+    }, 100);
+  };
+
+  function formatearFecha(fecha) {
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+</script>
 
 <script type="module">
   import { requireRole } from "/src/lib/authHelpers.js";

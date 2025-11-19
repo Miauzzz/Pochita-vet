@@ -39,8 +39,8 @@ export async function obtenerDisponibilidadesPorMes(mes, anio, veterinarioId = n
     const ultimoDia = new Date(anio, mes, 0).getDate();
     const ultimaFecha = `${anio}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
     
-    // Usar populate simple
-    let url = `${STRAPI_URL}/api/disponibilidads?filters[fecha][$gte]=${primerDia}&filters[fecha][$lte]=${ultimaFecha}&populate=*&sort[0]=fecha:asc&sort[1]=hora_inicio:asc`;
+    // Usar populate para incluir veterinario y cita
+    let url = `${STRAPI_URL}/api/disponibilidads?filters[fecha][$gte]=${primerDia}&filters[fecha][$lte]=${ultimaFecha}&populate[veterinario]=*&populate[cita]=*&sort[0]=fecha:asc&sort[1]=hora_inicio:asc`;
     
     if (veterinarioId) {
       url += `&filters[veterinario][id][$eq]=${veterinarioId}`;
@@ -170,32 +170,47 @@ export async function obtenerDisponibilidadPorFecha(fecha) {
 }
 
 /**
- * Obtener lista de veterinarios con sus datos completos desde Usuario
+ * Obtener lista de veterinarios extrayéndolos de las disponibilidades
+ * (No requiere permisos especiales, solo find en Disponibilidad)
  */
-export async function obtenerVeterinarios() {
+export async function obtenerVeterinarios(jwt = null) {
   try {
-    // Obtener veterinarios desde la colección Usuario filtrando por tipo_usuario
-    const response = await fetch(`${STRAPI_URL}/api/usuarios?filters[tipo_usuario][$eq]=veterinario&populate=user&fields[0]=nombre&sort=nombre:asc`);
+    // Obtener todas las disponibilidades con veterinarios populated
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (jwt) {
+      headers['Authorization'] = `Bearer ${jwt}`;
+    }
+    
+    const response = await fetch(`${STRAPI_URL}/api/disponibilidads?populate=*&pagination[limit]=100`, { headers });
     
     if (!response.ok) {
-      console.error('Error obteniendo veterinarios:', response.status);
+      console.error('Error obteniendo disponibilidades:', response.status);
       return [];
     }
     
     const data = await response.json();
     
-    // Transformar para incluir el id del user y los datos del perfil
-    return (data.data || []).map(veterinario => {
-      const nombreCompleto = veterinario.nombre || '';
-      const partes = nombreCompleto.split(' ');
-      
-      return {
-        id: veterinario.user?.id || null,
-        nombre: partes[0] || '',
-        apellido: partes.slice(1).join(' ') || '',
-        nombreCompleto: nombreCompleto,
-        username: veterinario.user?.username || '',
-      };
+    // Extraer veterinarios únicos
+    const veterinariosMap = new Map();
+    
+    (data.data || []).forEach((disp) => {
+      if (disp.veterinario?.id) {
+        veterinariosMap.set(disp.veterinario.id, {
+          id: disp.veterinario.id,
+          username: disp.veterinario.username || '',
+          nombreCompleto: disp.veterinario.nombreCompleto || null,
+        });
+      }
+    });
+    
+    // Convertir a array y ordenar
+    return Array.from(veterinariosMap.values()).sort((a, b) => {
+      const nombreA = a.nombreCompleto || a.username || '';
+      const nombreB = b.nombreCompleto || b.username || '';
+      return nombreA.localeCompare(nombreB);
     });
   } catch (error) {
     console.error('Error al obtener veterinarios:', error);
@@ -377,17 +392,18 @@ export async function obtenerPacientes(jwt = null) {
  */
 export async function crearCita(datos) {
   try {
-    const { fecha, hora, motivo, pacienteId, veterinarioId, recepcionistaId, disponibilidadId, jwt } = datos;
+    const { fecha, hora, motivo, pacienteId, veterinarioId, recepcionistaId, disponibilidadId, disponibilidadDocumentId, jwt } = datos;
 
     const body = {
       data: {
         fecha,
         hora,
         motivo: motivo || '',
-        paciente: pacienteId || null,
-        veterinario: veterinarioId || null,
-        recepcionista: recepcionistaId || null,
-        disponibilidad: disponibilidadId || null,
+        pacienteId: pacienteId || null,
+        veterinarioId: veterinarioId || null,
+        recepcionistaId: recepcionistaId || null,
+        disponibilidadId: disponibilidadId || null,
+        disponibilidadDocumentId: disponibilidadDocumentId || null,
       },
     };
 
@@ -411,6 +427,71 @@ export async function crearCita(datos) {
     return data.data;
   } catch (error) {
     console.error('Error en crearCita:', error);
+    throw error;
+  }
+}
+
+/**
+ * Obtener citas (filtradas automáticamente por rol en backend)
+ * @param {string} jwt - Token de autenticación
+ */
+export async function obtenerCitas(jwt) {
+  try {
+    console.log('📡 Fetching citas from API...');
+    const url = `${STRAPI_URL}/api/citas?populate[paciente]=*&populate[veterinario]=*&populate[recepcionista]=*&populate[disponibilidad]=*&sort[0]=fecha:desc&sort[1]=hora:desc`;
+    console.log('URL:', url);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Datos recibidos:', data);
+    console.log('Total citas:', data.data?.length || 0);
+    return data.data || [];
+  } catch (error) {
+    console.error('❌ Error en obtenerCitas:', error);
+    throw error;
+  }
+}
+
+/**
+ * Actualizar estado de cita (confirmar, cancelar, etc)
+ * @param {number} citaId - ID de la cita
+ * @param {object} datos - Datos a actualizar (ej: {estado: 'confirmada'})
+ * @param {string} jwt - Token de autenticación
+ */
+export async function actualizarCita(citaId, datos, jwt) {
+  try {
+    const response = await fetch(`${STRAPI_URL}/api/citas/${citaId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ data: datos }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.error?.message || 'Error al actualizar cita');
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error en actualizarCita:', error);
     throw error;
   }
 }

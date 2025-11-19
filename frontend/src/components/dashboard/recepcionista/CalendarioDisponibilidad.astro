@@ -98,7 +98,16 @@ const { veterinarioId = null } = Astro.props;
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            <span x-text="bloque.hora_inicio + ' - ' + bloque.hora_fin"></span>
+            <span x-text="(() => {
+              const fmt = h => {
+                if (!h) return '';
+                const parts = String(h).split(':');
+                const hh = String(parts[0] || '').padStart(2, '0');
+                const mm = String(parts[1] || '00').padStart(2, '0');
+                return hh + ':' + mm;
+              };
+              return fmt(bloque.hora_inicio) + (bloque.hora_fin ? ' - ' + fmt(bloque.hora_fin) : '');
+            })()"></span>
           </div>
           
           <div class="bloque-veterinario">
@@ -136,23 +145,37 @@ const { veterinarioId = null } = Astro.props;
     <!-- Modal Agendar -->
     <div x-show="modalAgendarOpen" class="modal-overlay" style="display: none;">
       <div class="modal-content">
-        <h4 class="mb-2">Agendar cita - <span x-text="formatearFecha(diaSeleccionado?.fecha)"></span></h4>
-        <div class="grid grid-cols-1 gap-2">
-          <label class="text-sm">Bloque: <strong x-text="bloqueSeleccionado?.hora_inicio + ' - ' + bloqueSeleccionado?.hora_fin"></strong></label>
-          <label class="text-sm">Paciente</label>
-          <select x-model="pacienteSeleccionado" class="p-2 border rounded">
-            <option value="" disabled selected>Selecciona un paciente</option>
-            <template x-for="p in pacientes" :key="p.id">
-              <option :value="p.id" x-text="p.nombre"></option>
-            </template>
-          </select>
-          <label class="text-sm">Motivo (opcional)</label>
-          <input type="text" x-model="motivoCita" class="p-2 border rounded" />
-          <div class="flex gap-2 justify-end mt-2">
-            <button @click="cerrarModal()" class="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
-            <button @click="confirmarAgendar()" class="px-3 py-1 bg-orange-500 text-white rounded">Confirmar</button>
-          </div>
+      <h4 class="mb-2">Agendar cita - <span x-text="formatearFecha(diaSeleccionado?.fecha)"></span></h4>
+      <div class="grid grid-cols-1 gap-2">
+        <label class="text-sm">Bloque: 
+        <strong x-text="(() => {
+          const fmt = h => {
+          if (!h) return '';
+          const parts = String(h).split(':');
+          const hh = String(parts[0] || '').padStart(2, '0');
+          const mm = String(parts[1] || '00').padStart(2, '0');
+          return hh + ':' + mm;
+          };
+          return fmt(bloqueSeleccionado?.hora_inicio) + (bloqueSeleccionado?.hora_fin ? ' - ' + fmt(bloqueSeleccionado?.hora_fin) : '');
+        })()"></strong>
+        </label>
+
+        <label class="text-sm">Paciente</label>
+        <select x-model="pacienteSeleccionado" class="p-2 border rounded" required>
+        <option value="">Selecciona un paciente</option>
+        <template x-for="p in pacientes" :key="p.id">
+          <option :value="p.id" x-text="p.nombre + ' (Dueño: ' + (p.propietario?.nombreCompleto || p.propietario?.username || p.propietario?.email || 'N/A') + ')'"></option>
+        </template>
+        </select>
+
+        <label class="text-sm">Motivo (opcional)</label>
+        <input type="text" x-model="motivoCita" class="p-2 border rounded" />
+
+        <div class="flex gap-2 justify-end mt-2">
+        <button @click="cerrarModal()" class="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
+        <button @click="confirmarAgendar()" class="px-3 py-1 bg-orange-500 text-white rounded">Confirmar</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -370,14 +393,26 @@ const { veterinarioId = null } = Astro.props;
 
       async confirmarAgendar() {
         if (!this.bloqueSeleccionado || !this.diaSeleccionado) return;
-        if (!this.pacienteSeleccionado) { alert('Selecciona un paciente'); return; }
+        if (!this.pacienteSeleccionado || this.pacienteSeleccionado === '') { 
+          alert('Selecciona un paciente'); 
+          return; 
+        }
 
         try {
           const session = loadSession();
           const jwt = session?.jwt || null;
           const recepcionistaId = session?.appUser?.profile?.id || null;
 
-          // Crear cita
+          console.log('🎯 Datos para crear cita:', {
+            fecha: this.diaSeleccionado.fecha,
+            hora: this.bloqueSeleccionado.hora_inicio,
+            pacienteId: this.pacienteSeleccionado,
+            veterinarioId: this.bloqueSeleccionado.veterinario?.id,
+            disponibilidadId: this.bloqueSeleccionado.id,
+            disponibilidadDocumentId: this.bloqueSeleccionado.documentId
+          });
+
+          // Crear cita - IMPORTANTE: pasar disponibilidadDocumentId
           const cita = await crearCita({
             fecha: this.diaSeleccionado.fecha,
             hora: this.bloqueSeleccionado.hora_inicio,
@@ -386,27 +421,25 @@ const { veterinarioId = null } = Astro.props;
             veterinarioId: this.bloqueSeleccionado.veterinario?.id || null,
             recepcionistaId,
             disponibilidadId: this.bloqueSeleccionado.id,
+            disponibilidadDocumentId: this.bloqueSeleccionado.documentId, // ¡CRÍTICO!
             jwt,
           });
 
-          console.log('Cita creada:', cita);
+          console.log('✅ Cita creada:', cita);
 
-          // Actualizar disponibilidad a ocupado (usar documentId)
-          const docId = this.bloqueSeleccionado.documentId || this.bloqueSeleccionado._documentId || null;
-          if (docId) {
-            await actualizarDisponibilidad(docId, { estado: 'ocupado', disponible: false, cita: cita.id }, jwt);
-          }
+          // Ya NO necesitamos actualizar la disponibilidad aquí
+          // El backend lo hace automáticamente en el controller
 
           // Recargar
           await this.cargarDisponibilidades();
           this.generarDiasMes();
           this.cerrarModal();
           this.diaSeleccionado = null;
-          alert('Cita agendada correctamente');
+          alert('✅ Cita agendada correctamente');
         } catch (err: unknown) {
-          console.error('Error agendando cita:', err);
+          console.error('❌ Error agendando cita:', err);
           const errorMessage = err instanceof Error ? err.message : 'Error al agendar cita';
-          alert(errorMessage);
+          alert('❌ ' + errorMessage);
         }
       },
 

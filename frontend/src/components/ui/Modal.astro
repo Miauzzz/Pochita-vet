@@ -1,0 +1,66 @@
+---
+interface Props {
+  id: string;
+  title?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
+
+const { id, title, size = 'md' } = Astro.props;
+
+const sizeClasses = {
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl'
+};
+---
+
+<div 
+  id={id}
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+  onclick="if(event.target === this) window.close_{id}()"
+>
+  <div 
+    class={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto`}
+  >
+    <!-- Header -->
+    {title && (
+      <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">{title}</h3>
+        <button 
+          onclick={`window.close_${id}()`}
+          class="text-gray-400 hover:text-gray-600 transition-colors"
+          type="button"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    )}
+
+    <!-- Content -->
+    <div class="px-6 py-4">
+      <slot />
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ id }}>
+  // Exponer funciones globales para abrir/cerrar modal
+  window[`open_${id}`] = () => {
+    const modal = document.getElementById(id);
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  };
+
+  window[`close_${id}`] = () => {
+    const modal = document.getElementById(id);
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  };
+</script>

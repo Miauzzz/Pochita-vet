@@ -1,0 +1,242 @@
+---
+---
+
+<div class="mis-agendas-container manrope" x-data="misAgendas()">
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Mis Citas</h2>
+    <p class="text-gray-600">Revisa tu agenda de citas</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="flex gap-3 mb-6 flex-wrap">
+    <button 
+      @click="filtroEstado = 'confirmada'"
+      :class="filtroEstado === 'confirmada' ? 'bg-green-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
+      class="px-4 py-2 rounded-lg font-medium transition-all"
+    >
+      Confirmadas (<span x-text="citasPorEstado.confirmada"></span>)
+    </button>
+    <button 
+      @click="filtroEstado = 'pendiente'"
+      :class="filtroEstado === 'pendiente' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
+      class="px-4 py-2 rounded-lg font-medium transition-all"
+    >
+      Pendientes (<span x-text="citasPorEstado.pendiente"></span>)
+    </button>
+    <button 
+      @click="filtroEstado = 'todas'"
+      :class="filtroEstado === 'todas' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
+      class="px-4 py-2 rounded-lg font-medium transition-all"
+    >
+      Todas (<span x-text="citas.length"></span>)
+    </button>
+  </div>
+
+  <!-- Citas de hoy -->
+  <template x-if="citasHoy.length > 0">
+    <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-5 rounded-lg">
+      <h3 class="font-semibold text-blue-900 mb-3">📅 Citas de Hoy (<span x-text="citasHoy.length"></span>)</h3>
+      <div class="space-y-2">
+        <template x-for="cita in citasHoy" :key="cita.id">
+          <div class="bg-white p-3 rounded-lg shadow-sm">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="font-medium text-gray-900" x-text="cita.hora + ' - ' + (cita.paciente?.nombre || 'N/A')"></p>
+                <p class="text-sm text-gray-600" x-text="'Propietario: ' + (cita.paciente?.propietario?.username || 'N/A')"></p>
+                <p class="text-sm text-gray-600" x-show="cita.motivo" x-text="'Motivo: ' + cita.motivo"></p>
+              </div>
+              <span 
+                class="px-2 py-1 rounded-full text-xs font-semibold"
+                :class="{
+                  'bg-yellow-100 text-yellow-800': cita.estado === 'pendiente',
+                  'bg-green-100 text-green-800': cita.estado === 'confirmada'
+                }"
+                x-text="cita.estado"
+              ></span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- Lista completa de citas -->
+  <div class="space-y-4">
+    <template x-if="cargando">
+      <div class="text-center py-8">
+        <p class="text-gray-500">Cargando citas...</p>
+      </div>
+    </template>
+
+    <template x-if="!cargando && citasFiltradas.length === 0">
+      <div class="bg-gray-50 rounded-lg p-8 text-center">
+        <p class="text-gray-500">No tienes citas <span x-text="filtroEstado === 'todas' ? '' : 'en estado: ' + filtroEstado"></span></p>
+      </div>
+    </template>
+
+    <template x-for="cita in citasFiltradas" :key="cita.id">
+      <div class="bg-white rounded-xl shadow-md border-l-4 p-5 transition-all hover:shadow-lg"
+           :class="{
+             'border-yellow-500': cita.estado === 'pendiente',
+             'border-green-500': cita.estado === 'confirmada',
+             'border-red-500': cita.estado === 'cancelada'
+           }">
+        
+        <div class="grid md:grid-cols-2 gap-4">
+          <!-- Info de la cita -->
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <h3 class="font-semibold text-lg text-gray-900" x-text="cita.paciente?.nombre || 'N/A'"></h3>
+                <p class="text-sm text-gray-600" x-text="formatearFecha(cita.fecha) + ' - ' + cita.hora"></p>
+              </div>
+              <span 
+                class="px-3 py-1 rounded-full text-xs font-semibold"
+                :class="{
+                  'bg-yellow-100 text-yellow-800': cita.estado === 'pendiente',
+                  'bg-green-100 text-green-800': cita.estado === 'confirmada',
+                  'bg-red-100 text-red-800': cita.estado === 'cancelada'
+                }"
+                x-text="cita.estado.toUpperCase()"
+              ></span>
+            </div>
+
+            <div class="space-y-1 text-sm">
+              <p class="text-gray-700"><strong>Especie:</strong> <span x-text="cita.paciente?.especie || 'N/A'"></span></p>
+              <p class="text-gray-700"><strong>Raza:</strong> <span x-text="cita.paciente?.raza || 'N/A'"></span></p>
+              <p class="text-gray-700" x-show="cita.motivo"><strong>Motivo:</strong> <span x-text="cita.motivo"></span></p>
+            </div>
+          </div>
+
+          <!-- Acciones -->
+          <div class="flex items-center justify-end">
+            <template x-if="cita.estado === 'confirmada'">
+              <button 
+                @click="cancelarCita(cita.id)"
+                :disabled="procesando"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50"
+              >
+                Cancelar cita
+              </button>
+            </template>
+
+            <template x-if="cita.estado === 'pendiente'">
+              <p class="text-sm text-yellow-600">Esperando confirmación del recepcionista</p>
+            </template>
+
+            <template x-if="cita.estado === 'cancelada'">
+              <p class="text-sm text-red-600">Cita cancelada</p>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  // @ts-ignore
+  import { obtenerCitas, actualizarCita } from '../../../lib/disponibilidad';
+  // @ts-ignore
+  import { loadSession } from '../../../lib/authHelpers.js';
+
+  function misAgendas() {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fechaHoy = hoy.toISOString().split('T')[0];
+
+    return {
+      citas: [] as any[],
+      cargando: true,
+      procesando: false,
+      filtroEstado: 'confirmada' as string,
+
+      get citasFiltradas() {
+        if (this.filtroEstado === 'todas') {
+          return this.citas;
+        }
+        return this.citas.filter((c: any) => c.estado === this.filtroEstado);
+      },
+
+      get citasHoy() {
+        return this.citas.filter((c: any) => c.fecha === fechaHoy && c.estado === 'confirmada');
+      },
+
+      get citasPorEstado() {
+        return {
+          pendiente: this.citas.filter((c: any) => c.estado === 'pendiente').length,
+          confirmada: this.citas.filter((c: any) => c.estado === 'confirmada').length,
+          cancelada: this.citas.filter((c: any) => c.estado === 'cancelada').length,
+        };
+      },
+
+      async init() {
+        await this.cargarCitas();
+      },
+
+      async cargarCitas() {
+        try {
+          this.cargando = true;
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          console.log('=== CARGANDO AGENDA VETERINARIO ===');
+
+          if (!jwt) {
+            console.error('No hay sesión activa');
+            alert('No hay sesión activa. Por favor inicia sesión.');
+            return;
+          }
+
+          this.citas = await obtenerCitas(jwt);
+          console.log('✅ Citas del veterinario:', this.citas.length, 'citas');
+          console.log('Citas de hoy:', this.citasHoy.length);
+          console.log('Por estado:', this.citasPorEstado);
+        } catch (error) {
+          console.error('❌ Error cargando citas:', error);
+          alert('Error al cargar las citas: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      async cancelarCita(citaId: number) {
+        if (!confirm('¿Cancelar esta cita?')) return;
+
+        try {
+          this.procesando = true;
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          if (!jwt) {
+            alert('No hay sesión activa');
+            return;
+          }
+
+          await actualizarCita(citaId, { estado: 'cancelada' }, jwt);
+          
+          alert('Cita cancelada');
+          await this.cargarCitas();
+        } catch (error) {
+          console.error('Error cancelando cita:', error);
+          alert('Error al cancelar la cita');
+        } finally {
+          this.procesando = false;
+        }
+      },
+
+      formatearFecha(fechaISO: string) {
+        if (!fechaISO) return '';
+        const fecha = new Date(fechaISO + 'T00:00:00');
+        const opciones: Intl.DateTimeFormatOptions = { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        };
+        return fecha.toLocaleDateString('es-ES', opciones);
+      },
+    };
+  }
+</script>

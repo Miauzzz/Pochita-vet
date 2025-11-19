@@ -156,24 +156,47 @@
         await new Promise(resolve => setTimeout(resolve, 100));
         
         try {
-          // Cargar veterinarios
-          this.veterinarios = await obtenerVeterinarios();
-          console.log('Veterinarios cargados:', this.veterinarios);
-
-          // Cargar pacientes del cliente
+          // Cargar sesión primero
           const session = loadSession();
           const jwt = session?.jwt || null;
           const clienteId = session?.appUser?.profile?.id || null;
 
+          // Cargar veterinarios (pasando JWT)
+          this.veterinarios = await obtenerVeterinarios(jwt);
+          console.log('Veterinarios cargados:', this.veterinarios);
+
           if (jwt && clienteId) {
-            // Cargar pacientes del cliente
-            const todosPacientes = await obtenerPacientes(jwt);
-            // Filtrar solo los pacientes del cliente actual
-            this.misPacientes = todosPacientes.filter((p: any) => p.cliente?.id === clienteId);
-            console.log('Mis pacientes:', this.misPacientes);
+            await this.cargarPacientes();
           }
+
+          // Escuchar eventos de creación/eliminación de mascotas
+          window.addEventListener('mascota-creada', async () => {
+            console.log('Mascota creada, recargando pacientes...');
+            await this.cargarPacientes();
+          });
+
+          window.addEventListener('mascota-eliminada', async () => {
+            console.log('Mascota eliminada, recargando pacientes...');
+            await this.cargarPacientes();
+          });
         } catch (error) {
           console.error('Error en init:', error);
+        }
+      },
+
+      async cargarPacientes() {
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          if (!jwt) return;
+
+          // El backend filtra automáticamente por cliente
+          const todosPacientes = await obtenerPacientes(jwt);
+          this.misPacientes = todosPacientes;
+          console.log('Mis pacientes:', this.misPacientes);
+        } catch (error) {
+          console.error('Error cargando pacientes:', error);
         }
       },
 
@@ -221,6 +244,8 @@
       seleccionarBloque(bloque: any) {
         this.bloqueSeleccionado = bloque;
         console.log('Bloque seleccionado:', bloque);
+        console.log('documentId del bloque:', bloque.documentId);
+        console.log('id del bloque:', bloque.id);
       },
 
       cancelar() {
@@ -242,6 +267,13 @@
           const jwt = session?.jwt || null;
           const clienteId = session?.appUser?.profile?.id || null;
 
+          console.log('=== DATOS PARA CREAR CITA ===');
+          console.log('bloqueSeleccionado:', this.bloqueSeleccionado);
+          console.log('disponibilidadId:', this.bloqueSeleccionado.id);
+          console.log('disponibilidadDocumentId:', this.bloqueSeleccionado.documentId);
+          console.log('veterinarioId:', this.bloqueSeleccionado.veterinario?.id);
+          console.log('pacienteId:', this.pacienteSeleccionado);
+
           // Crear la cita
           const cita = await crearCita({
             fecha: this.bloqueSeleccionado.fecha,
@@ -251,17 +283,14 @@
             veterinarioId: this.bloqueSeleccionado.veterinario?.id || null,
             recepcionistaId: null, // Cliente agenda directamente
             disponibilidadId: this.bloqueSeleccionado.id,
+            disponibilidadDocumentId: this.bloqueSeleccionado.documentId,
             jwt,
           });
 
           console.log('Cita creada:', cita);
 
-          // Marcar disponibilidad como ocupada
-          const docId = this.bloqueSeleccionado.documentId || this.bloqueSeleccionado._documentId;
-          if (docId) {
-            await actualizarDisponibilidad(docId, { estado: 'ocupado', disponible: false, cita: cita.id }, jwt);
-          }
-
+          // El backend actualiza la disponibilidad automáticamente
+          
           alert('¡Cita agendada exitosamente!');
           
           // Resetear formulario

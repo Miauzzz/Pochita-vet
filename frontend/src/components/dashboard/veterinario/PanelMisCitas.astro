@@ -1,0 +1,162 @@
+---
+---
+
+<div class="agenda-veterinario bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+  <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+    <span>🩺</span>
+    <span>Mi Agenda</span>
+  </h2>
+  
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <button onclick="filtrarAgenda('hoy')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors" data-filtro="hoy">
+      📆 Hoy
+    </button>
+    <button onclick="filtrarAgenda('proximas')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-blue-100 transition-colors" data-filtro="proximas">
+      📅 Próximas
+    </button>
+    <button onclick="filtrarAgenda('confirmada')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-green-100 transition-colors" data-filtro="confirmada">
+      ✓ Confirmadas
+    </button>
+    <button onclick="filtrarAgenda('todas')" class="filtro-btn px-3 py-1.5 text-sm rounded-lg hover:bg-gray-100 transition-colors" data-filtro="todas">
+      Todas
+    </button>
+  </div>
+  
+  <div id="agenda-lista" class="space-y-3">
+    <p class="text-gray-500 text-center py-6 text-sm">Cargando tu agenda...</p>
+  </div>
+</div>
+
+<script>
+  import { loadSession } from '../../../lib/authHelpers.js';
+
+  const STRAPI_URL = 'http://localhost:1337';
+  let todasLasCitas: any[] = [];
+  let filtroActual = 'hoy';
+
+  async function cargarAgenda() {
+    const session = loadSession();
+    const jwt = session?.jwt;
+
+    if (!jwt) {
+      console.error('No hay JWT');
+      return;
+    }
+
+    try {
+      console.log('🔍 Cargando agenda (veterinario)...');
+      
+      const response = await fetch(`${STRAPI_URL}/api/citas?populate=*&sort[0]=fecha:asc&sort[1]=hora:asc`, {
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda recibida:', data.data.length);
+      console.log('🐞 DEBUG - Primera cita:', data.data[0]);
+      
+      todasLasCitas = data.data;
+      mostrarAgenda(filtroActual);
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      document.getElementById('agenda-lista')!.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-red-800 text-sm">Error al cargar agenda: ${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  (window as any).filtrarAgenda = function(filtro: string) {
+    filtroActual = filtro;
+    
+    // Actualizar botones
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+      if (btn.getAttribute('data-filtro') === filtro) {
+        btn.classList.add('bg-gray-700', 'text-white');
+        btn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'hover:bg-blue-100', 'hover:bg-green-100', 'hover:bg-gray-100');
+      } else {
+        btn.classList.remove('bg-gray-700', 'text-white');
+        btn.classList.add('bg-gray-200');
+      }
+    });
+    
+    mostrarAgenda(filtro);
+  };
+
+  function mostrarAgenda(filtro: string) {
+    const container = document.getElementById('agenda-lista')!;
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    let citasFiltradas = todasLasCitas;
+    
+    if (filtro === 'hoy') {
+      citasFiltradas = todasLasCitas.filter(c => c.fecha === hoy && c.estado !== 'cancelada');
+    } else if (filtro === 'proximas') {
+      citasFiltradas = todasLasCitas.filter(c => c.fecha >= hoy && c.estado !== 'cancelada');
+    } else if (filtro === 'confirmada') {
+      citasFiltradas = todasLasCitas.filter(c => c.estado === 'confirmada');
+    }
+    
+    if (citasFiltradas.length === 0) {
+      container.innerHTML = `<p class="text-gray-500 text-center py-6 text-sm">No hay citas ${filtro === 'todas' ? '' : `para "${filtro}"`}</p>`;
+      return;
+    }
+
+    const html = citasFiltradas.map(cita => {
+      const estadoColor = cita.estado === 'pendiente' ? 'border-l-yellow-400 bg-yellow-50' 
+        : cita.estado === 'confirmada' ? 'border-l-green-400 bg-green-50'
+        : 'border-l-gray-400 bg-gray-50';
+      
+      const paciente = cita.paciente?.nombre || '(Sin asignar)';
+      const propietario = cita.paciente?.propietario?.nombreCompleto || cita.paciente?.propietario?.username || cita.paciente?.propietario?.email || '(Sin datos)';
+      const horaFormateada = cita.hora ? cita.hora.substring(0, 5) : 'N/A';
+      
+      const estadoBadge = cita.estado === 'pendiente' ? '<span class="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">Pendiente</span>'
+        : cita.estado === 'confirmada' ? '<span class="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">Confirmada</span>'
+        : '<span class="bg-gray-500 text-white text-xs px-2 py-0.5 rounded-full">Cancelada</span>';
+      
+      const esHoy = cita.fecha === hoy;
+      
+      return `
+        <div class="${estadoColor} border-l-4 rounded-lg p-3 shadow-sm ${esHoy ? 'ring-2 ring-blue-300' : ''}">
+          ${esHoy ? '<div class="bg-blue-100 border border-blue-300 rounded px-2 py-0.5 mb-1.5 inline-block"><p class="text-xs text-blue-700 font-semibold">📆 HOY</p></div>' : ''}
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <p class="font-bold text-sm text-gray-900">📅 ${cita.fecha}</p>
+              <p class="text-xs text-gray-600">⏰ ${horaFormateada}</p>
+            </div>
+            ${estadoBadge}
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs"><span class="font-semibold">🐾 Mascota:</span> ${paciente}</p>
+            <p class="text-xs"><span class="font-semibold">👤 Dueño:</span> ${propietario}</p>
+            ${cita.motivo ? `<p class="text-xs"><span class="font-semibold">📝 Motivo:</span> ${cita.motivo}</p>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Cargar al iniciar
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarAgenda();
+    // Activar filtro "hoy" por defecto
+    setTimeout(() => {
+      const btnHoy = document.querySelector('[data-filtro="hoy"]');
+      if (btnHoy) {
+        btnHoy.classList.add('bg-gray-700', 'text-white');
+        btnHoy.classList.remove('bg-gray-200');
+      }
+    }, 100);
+  });
+</script>

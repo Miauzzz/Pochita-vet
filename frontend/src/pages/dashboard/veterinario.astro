@@ -1,14 +1,424 @@
 ---
-import DashboardLayout from '../../layouts/BaseDashboard.astro';
-import GestionDisponibilidad from '../../components/dashboard/veterinario/GestionDisponibilidad.astro';
+import BaseDashboard from '../../layouts/BaseDashboard.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Loading from '../../components/ui/Loading.astro';
+import Input from '../../components/ui/Input.astro';
+import Modal from '../../components/ui/Modal.astro';
 ---
 
-<DashboardLayout>
+<BaseDashboard>
+  <div class="max-w-7xl mx-auto p-4 space-y-6">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-900">Panel Veterinario</h1>
+      <div class="text-sm text-gray-600" id="user-info">Cargando...</div>
+    </div>
 
-    <GestionDisponibilidad />
-    <!-- <NotificacionesVeterinario /> -->
+    <!-- Sección: Mi Disponibilidad -->
+    <section>
+      <Card padding="md">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-gray-900">Mi Disponibilidad</h2>
+          <button onclick="window.open_disponibilidad()" class="px-3 py-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
+            + Nueva Disponibilidad
+          </button>
+        </div>
+        
+        <div id="disponibilidad-container">
+          <Loading text="Cargando disponibilidades..." />
+        </div>
+      </Card>
+    </section>
 
-</DashboardLayout>
+    <!-- Sección: Mi Agenda -->
+    <section>
+      <Card padding="md">
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xl font-bold text-gray-900">Mi Agenda</h2>
+            <div class="flex gap-2">
+              <Button size="sm" variant="primary" data-filter-fecha="todas">Todas</Button>
+              <Button size="sm" variant="ghost" data-filter-fecha="hoy">Hoy</Button>
+              <Button size="sm" variant="ghost" data-filter-fecha="semana">Esta Semana</Button>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="px-3 py-1 text-xs rounded-full bg-gray-200 text-gray-800" data-filter-estado="todas">Todas</button>
+            <button class="px-3 py-1 text-xs rounded-full bg-transparent text-gray-600 border border-gray-300" data-filter-estado="pendiente">Pendientes</button>
+            <button class="px-3 py-1 text-xs rounded-full bg-transparent text-gray-600 border border-gray-300" data-filter-estado="confirmada">Confirmadas</button>
+            <button class="px-3 py-1 text-xs rounded-full bg-transparent text-gray-600 border border-gray-300" data-filter-estado="cancelada">Canceladas</button>
+          </div>
+        </div>
+        
+        <div id="agenda-container">
+          <Loading text="Cargando agenda..." />
+        </div>
+      </Card>
+    </section>
+
+  </div>
+
+  <!-- Modal: Nueva Disponibilidad -->
+  <Modal id="disponibilidad" title="Nueva Disponibilidad">
+    <form id="form-disponibilidad" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+        <Input type="date" id="disp-fecha" required />
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Hora Inicio</label>
+          <Input type="time" id="disp-hora-inicio" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Hora Fin</label>
+          <Input type="time" id="disp-hora-fin" required />
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-4 border-t">
+        <Button type="submit" variant="success" full>Crear Disponibilidad</Button>
+        <button type="button" onclick="window.close_disponibilidad()" class="px-4 py-2 text-sm bg-transparent hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </Modal>
+
+</BaseDashboard>
+
+<script>
+  import { loadSession } from '../../lib/authHelpers.js';
+  import { DisponibilidadesAPI } from '../../lib/api/disponibilidades.js';
+  import { CitasAPI } from '../../lib/api/citas.js';
+
+  let session, disponibilidadesAPI, citasAPI;
+  let disponibilidades = [];
+  let citas = [];
+  let filtroAgenda = 'todas';
+  let filtroEstadoAgenda = 'todas';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Dashboard veterinario iniciando...');
+    
+    session = loadSession();
+    if (!session?.jwt) {
+      console.error('❌ No hay sesión, redirigiendo a login');
+      window.location.href = '/login';
+      return;
+    }
+
+    console.log('✅ Sesión cargada:', session.appUser.profile.email);
+
+    disponibilidadesAPI = new DisponibilidadesAPI(session.jwt);
+    citasAPI = new CitasAPI(session.jwt);
+    
+    document.getElementById('user-info').textContent = session.appUser.profile.email;
+
+    console.log('📥 Cargando datos iniciales...');
+    await cargarDisponibilidades();
+    await cargarAgenda();
+    setupEventos();
+    
+    // Configurar fecha mínima para disponibilidad
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('disp-fecha').setAttribute('min', hoy);
+    
+    console.log('✅ Dashboard veterinario listo');
+  });
+
+  async function cargarDisponibilidades() {
+    try {
+      const response = await disponibilidadesAPI.apiClient.get('/api/disponibilidads?populate=*&filters[veterinario][id][$eq]=' + session.appUser.profile.id);
+      disponibilidades = response.data || [];
+      renderDisponibilidades();
+    } catch (error) {
+      console.error('Error cargando disponibilidades:', error);
+      document.getElementById('disponibilidad-container').innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-center text-red-600 text-sm font-medium">Error al cargar disponibilidades</p>
+          <p class="text-center text-red-500 text-xs mt-1">${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderDisponibilidades() {
+    const container = document.getElementById('disponibilidad-container');
+    
+    if (disponibilidades.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 text-gray-500 text-sm">
+          No tienes disponibilidades creadas. Crea una para comenzar.
+        </div>
+      `;
+      return;
+    }
+
+    // Agrupar por fecha
+    const porFecha = {};
+    disponibilidades.forEach(d => {
+      if (!porFecha[d.fecha]) porFecha[d.fecha] = [];
+      porFecha[d.fecha].push(d);
+    });
+
+    container.innerHTML = Object.keys(porFecha).sort().map(fecha => {
+      const bloques = porFecha[fecha].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+      
+      return `
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">${formatearFecha(fecha)}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            ${bloques.map(b => {
+              const estadoClass = b.estado === 'disponible' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200';
+              const estadoText = b.estado === 'disponible' ? '✓ Disponible' : '✗ Ocupado';
+              
+              return `
+                <div class="border ${estadoClass} rounded-lg p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-semibold text-gray-900">
+                      ${b.hora_inicio.substring(0, 5)} - ${b.hora_fin.substring(0, 5)}
+                    </span>
+                    <span class="text-xs text-gray-600">${estadoText}</span>
+                  </div>
+                  ${b.estado === 'disponible' ? `
+                    <button 
+                      onclick="eliminarDisponibilidad('${b.documentId}')"
+                      class="w-full px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  ` : `
+                    <button 
+                      onclick="restaurarDisponibilidad('${b.documentId}')"
+                      class="w-full px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
+                    >
+                      Restaurar
+                    </button>
+                  `}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function cargarAgenda() {
+    try {
+      citas = await citasAPI.getMisCitas();
+      renderAgenda();
+    } catch (error) {
+      console.error('Error cargando agenda:', error);
+      document.getElementById('agenda-container').innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-center text-red-600 text-sm font-medium">Error al cargar agenda</p>
+          <p class="text-center text-red-500 text-xs mt-1">${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderAgenda() {
+    const container = document.getElementById('agenda-container');
+    
+    let citasFiltradas = citas;
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    // Filtro por fecha
+    if (filtroAgenda === 'hoy') {
+      citasFiltradas = citasFiltradas.filter(c => c.fecha === hoy);
+    } else if (filtroAgenda === 'semana') {
+      const inicioSemana = new Date();
+      const finSemana = new Date();
+      finSemana.setDate(finSemana.getDate() + 7);
+      citasFiltradas = citasFiltradas.filter(c => {
+        const fechaCita = new Date(c.fecha + 'T00:00:00');
+        return fechaCita >= inicioSemana && fechaCita <= finSemana;
+      });
+    }
+    
+    // Filtro por estado
+    if (filtroEstadoAgenda !== 'todas') {
+      citasFiltradas = citasFiltradas.filter(c => c.estado === filtroEstadoAgenda);
+    }
+
+    if (citasFiltradas.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 text-gray-500 text-sm">
+          No hay citas ${filtroAgenda === 'todas' ? '' : filtroAgenda === 'hoy' ? 'para hoy' : 'esta semana'}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = citasFiltradas.map(c => `
+      <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow mb-3">
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <p class="font-semibold text-gray-900">${formatearFecha(c.fecha)} • ${c.hora?.substring(0, 5)}</p>
+              ${c.estado === 'pendiente' ? '<Badge variant="pending">Pendiente</Badge>' : 
+                c.estado === 'confirmada' ? '<Badge variant="confirmed">Confirmada</Badge>' : 
+                '<Badge variant="danger">Cancelada</Badge>'}
+            </div>
+            
+            <div class="text-sm text-gray-600 space-y-1">
+              <p>🐾 ${c.paciente?.nombre || '(Sin mascota)'}</p>
+              <p>👤 ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || 'N/A'}</p>
+              ${c.motivo ? `<p class="text-xs text-gray-500 italic mt-2">📝 ${c.motivo}</p>` : ''}
+            </div>
+          </div>
+          
+          ${c.estado !== 'cancelada' ? `
+            <button 
+              onclick="cancelarCita('${c.documentId}')"
+              class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors"
+            >
+              Cancelar
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function setupEventos() {
+    // Filtros de fecha
+    document.querySelectorAll('[data-filter-fecha]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter-fecha]').forEach(b => {
+          b.className = b.className.replace('bg-orange-500 text-white hover:bg-orange-600', 'bg-transparent text-gray-700 hover:bg-gray-100');
+        });
+        btn.className = btn.className.replace('bg-transparent text-gray-700 hover:bg-gray-100', 'bg-orange-500 text-white hover:bg-orange-600');
+        filtroAgenda = btn.dataset.filterFecha;
+        renderAgenda();
+      });
+    });
+    
+    // Filtros de estado
+    document.querySelectorAll('[data-filter-estado]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter-estado]').forEach(b => {
+          b.className = 'px-3 py-1 text-xs rounded-full bg-transparent text-gray-600 border border-gray-300';
+        });
+        btn.className = 'px-3 py-1 text-xs rounded-full bg-gray-200 text-gray-800';
+        filtroEstadoAgenda = btn.dataset.filterEstado;
+        renderAgenda();
+      });
+    });
+
+    // Form crear disponibilidad
+    document.getElementById('form-disponibilidad').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      console.log('📝 Form disponibilidad submit...');
+      
+      const fechaInput = document.getElementById('disp-fecha').value;
+      const horaInicioInput = document.getElementById('disp-hora-inicio').value;
+      const horaFinInput = document.getElementById('disp-hora-fin').value;
+      
+      // Validar que hora fin sea mayor que hora inicio
+      if (horaFinInput <= horaInicioInput) {
+        alert('❌ La hora de fin debe ser posterior a la hora de inicio');
+        return;
+      }
+      
+      // Validar que si es hoy, la hora sea futura
+      const hoy = new Date().toISOString().split('T')[0];
+      if (fechaInput === hoy) {
+        const ahora = new Date();
+        const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
+        const [h, m] = horaInicioInput.split(':').map(Number);
+        const horaIngresada = h * 60 + m;
+        
+        if (horaIngresada <= horaActual) {
+          alert('❌ No puedes crear disponibilidad en horas pasadas');
+          return;
+        }
+      }
+      
+      const datos = {
+        fecha: fechaInput,
+        hora_inicio: horaInicioInput + ':00.000',
+        hora_fin: horaFinInput + ':00.000'
+      };
+      
+      console.log('Datos disponibilidad:', datos);
+
+      try {
+        await disponibilidadesAPI.crearDisponibilidad(datos);
+        alert('✅ Disponibilidad creada');
+        window.close_disponibilidad();
+        await cargarDisponibilidades();
+        e.target.reset();
+      } catch (error) {
+        console.error('Error creando disponibilidad:', error);
+        alert('❌ Error: ' + error.message);
+      }
+    });
+  }
+
+  window.eliminarDisponibilidad = async (documentId) => {
+    if (!confirm('¿Eliminar esta disponibilidad?')) return;
+    
+    try {
+      await disponibilidadesAPI.eliminarDisponibilidad(documentId);
+      await cargarDisponibilidades();
+      alert('✅ Disponibilidad eliminada');
+    } catch (error) {
+      console.error('Error eliminando disponibilidad:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+  
+  window.restaurarDisponibilidad = async (documentId) => {
+    if (!confirm('¿Restaurar esta disponibilidad? Esto cancelará la cita asociada.')) return;
+    
+    try {
+      // Actualizar disponibilidad a disponible
+      await disponibilidadesAPI.apiClient.put(`/api/disponibilidads/${documentId}`, {
+        data: {
+          estado: 'disponible',
+          disponible: true
+        }
+      });
+      
+      await cargarDisponibilidades();
+      alert('✅ Disponibilidad restaurada');
+    } catch (error) {
+      console.error('Error restaurando disponibilidad:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+
+  window.cancelarCita = async (documentId) => {
+    if (!confirm('¿Cancelar esta cita?')) return;
+    
+    try {
+      await citasAPI.cancelarCita(documentId);
+      await cargarAgenda();
+      alert('🚫 Cita cancelada');
+    } catch (error) {
+      console.error('Error cancelando cita:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
+
+  function formatearFecha(fecha) {
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+</script>
 
 <script type="module">
   import { requireRole } from "/src/lib/authHelpers.js";

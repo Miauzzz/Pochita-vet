@@ -1,0 +1,426 @@
+---
+---
+
+<div class="mis-mascotas-container manrope" x-data="misMascotas()">
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Mis Mascotas</h2>
+    <p class="text-gray-600">Administra la información de tus mascotas</p>
+  </div>
+
+  <!-- Botón Agregar Mascota -->
+  <div class="mb-6">
+    <button 
+      @click="abrirFormulario()"
+      class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-all flex items-center gap-2"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Agregar Mascota</span>
+    </button>
+  </div>
+
+  <!-- Lista de Mascotas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <template x-for="mascota in mascotas" :key="mascota.id">
+      <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
+        <div class="flex justify-between items-start mb-4">
+          <h3 class="text-xl font-bold text-gray-900" x-text="mascota.nombre"></h3>
+          <button 
+            @click="eliminarMascota(mascota)"
+            class="text-red-500 hover:text-red-700"
+            title="Eliminar mascota"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="space-y-2 text-sm text-gray-600">
+          <p><strong>Especie:</strong> <span x-text="mascota.especie"></span></p>
+          <p x-show="mascota.raza"><strong>Raza:</strong> <span x-text="mascota.raza"></span></p>
+          <p x-show="mascota.sexo"><strong>Sexo:</strong> <span x-text="mascota.sexo"></span></p>
+          <p x-show="mascota.fecha_nacimiento"><strong>Fecha Nac.:</strong> <span x-text="formatearFecha(mascota.fecha_nacimiento)"></span></p>
+          <p x-show="mascota.peso"><strong>Peso:</strong> <span x-text="mascota.peso + ' kg'"></span></p>
+          <p x-show="mascota.color"><strong>Color:</strong> <span x-text="mascota.color"></span></p>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Mensaje si no hay mascotas -->
+  <template x-if="mascotas.length === 0 && !cargando">
+    <div class="bg-gray-50 rounded-lg p-8 text-center">
+      <p class="text-gray-500 mb-4">No tienes mascotas registradas</p>
+      <button 
+        @click="abrirFormulario()"
+        class="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg"
+      >
+        Agregar primera mascota
+      </button>
+    </div>
+  </template>
+
+  <!-- Modal Formulario -->
+  <div 
+    x-show="modalOpen" 
+    @click.self="cerrarFormulario()"
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+    style="display: none; z-index: 9999;"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+  >
+    <div 
+      class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0 scale-95"
+      x-transition:enter-end="opacity-100 scale-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100 scale-100"
+      x-transition:leave-end="opacity-0 scale-95"
+      @click.stop
+    >
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-2xl font-bold text-gray-900">Registrar Nueva Mascota</h3>
+        <button 
+          @click="cerrarFormulario()"
+          class="text-gray-400 hover:text-gray-600 transition-colors"
+          title="Cerrar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <form @submit.prevent="guardarMascota()" class="space-y-5">
+        <!-- Nombre -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre *</label>
+          <input 
+            type="text" 
+            x-model="form.nombre"
+            required
+            maxlength="100"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+            placeholder="Ej: Firulais"
+          />
+        </div>
+
+        <!-- Especie -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Especie *</label>
+          <select 
+            x-model="form.especie"
+            required
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+          >
+            <option value="Perro">Perro</option>
+            <option value="Gato">Gato</option>
+            <option value="Ave">Ave</option>
+            <option value="Conejo">Conejo</option>
+            <option value="Roedor">Roedor</option>
+            <option value="Reptil">Reptil</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Raza -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Raza</label>
+            <input 
+              type="text" 
+              x-model="form.raza"
+              maxlength="100"
+              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+              placeholder="Ej: Labrador"
+            />
+          </div>
+
+          <!-- Sexo -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Sexo</label>
+            <select 
+              x-model="form.sexo"
+              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="Macho">Macho</option>
+              <option value="Hembra">Hembra</option>
+              <option value="Sin determinar">Sin determinar</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Fecha de Nacimiento -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Nacimiento</label>
+            <input 
+              type="date" 
+              x-model="form.fecha_nacimiento"
+              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+            />
+          </div>
+
+          <!-- Peso -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Peso (kg)</label>
+            <input 
+              type="number" 
+              x-model="form.peso"
+              step="0.1"
+              min="0"
+              max="1000"
+              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+              placeholder="Ej: 15.5"
+            />
+          </div>
+        </div>
+
+        <!-- Color -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Color</label>
+          <input 
+            type="text" 
+            x-model="form.color"
+            maxlength="50"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+            placeholder="Ej: Café con blanco"
+          />
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3 justify-end pt-6 border-t border-gray-100">
+          <button 
+            type="button"
+            @click="cerrarFormulario()" 
+            class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            :disabled="cargando"
+            class="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span x-text="cargando ? 'Guardando...' : 'Guardar Mascota'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // @ts-ignore
+  import { loadSession } from '../../../lib/authHelpers.js';
+
+  const STRAPI_URL = 'http://localhost:1337';
+
+  function misMascotas() {
+    return {
+      mascotas: [] as any[],
+      modalOpen: false,
+      cargando: false,
+      form: {
+        nombre: '',
+        especie: 'Perro',
+        raza: '',
+        sexo: '',
+        fecha_nacimiento: '',
+        peso: null as number | null,
+        color: '',
+      },
+
+      async init() {
+        await this.cargarMascotas();
+      },
+
+      async cargarMascotas() {
+        this.cargando = true;
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          if (!jwt) {
+            console.error('Usuario no autenticado');
+            return;
+          }
+
+          console.log('Cargando mascotas...');
+
+          const response = await fetch(`${STRAPI_URL}/api/pacientes`, {
+            headers: {
+              'Authorization': `Bearer ${jwt}`,
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error('Error al cargar mascotas');
+          }
+
+          const data = await response.json();
+          this.mascotas = data.data || [];
+          console.log('Mascotas cargadas:', this.mascotas.length, 'mascotas');
+        } catch (error) {
+          console.error('Error cargando mascotas:', error);
+          this.mascotas = [];
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      abrirFormulario() {
+        this.form = {
+          nombre: '',
+          especie: 'Perro',
+          raza: '',
+          sexo: '',
+          fecha_nacimiento: '',
+          peso: null,
+          color: '',
+        };
+        this.modalOpen = true;
+      },
+
+      cerrarFormulario() {
+        this.modalOpen = false;
+      },
+
+      async guardarMascota() {
+        if (!this.form.nombre) {
+          alert('El nombre es obligatorio');
+          return;
+        }
+
+        this.cargando = true;
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+          const userId = session?.appUser?.profile?.id || null;
+
+          if (!jwt || !userId) {
+            throw new Error('Usuario no autenticado');
+          }
+
+          // Preparar datos
+          const datos: any = {
+            nombre: this.form.nombre,
+            especie: this.form.especie,
+          };
+
+          if (this.form.raza) datos.raza = this.form.raza;
+          if (this.form.sexo) datos.sexo = this.form.sexo;
+          if (this.form.fecha_nacimiento) datos.fecha_nacimiento = this.form.fecha_nacimiento;
+          if (this.form.peso) datos.peso = parseFloat(this.form.peso as any);
+          if (this.form.color) datos.color = this.form.color;
+
+          console.log('Datos a enviar:', datos);
+          console.log('User ID:', userId);
+
+          const response = await fetch(`${STRAPI_URL}/api/pacientes`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${jwt}`,
+            },
+            body: JSON.stringify({ 
+              data: datos
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('Error del servidor:', error);
+            throw new Error(error.error?.message || 'Error al crear mascota');
+          }
+
+          alert('¡Mascota registrada exitosamente!');
+          this.cerrarFormulario();
+          await this.cargarMascotas();
+
+          // Disparar evento personalizado para que SolicitudCita recargue pacientes
+          window.dispatchEvent(new CustomEvent('mascota-creada'));
+        } catch (error: unknown) {
+          console.error('Error guardando mascota:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Error al guardar la mascota';
+          alert(errorMessage);
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      async eliminarMascota(mascota: any) {
+        if (!confirm(`¿Estás seguro de eliminar a ${mascota.nombre}?`)) {
+          return;
+        }
+
+        this.cargando = true;
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          if (!jwt) {
+            throw new Error('Usuario no autenticado');
+          }
+
+          const documentId = mascota.documentId || mascota._documentId;
+          if (!documentId) {
+            throw new Error('No se encontró el ID del paciente');
+          }
+
+          const response = await fetch(`${STRAPI_URL}/api/pacientes/${documentId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${jwt}`,
+            },
+          });
+
+          if (!response.ok && response.status !== 404) {
+            throw new Error('Error al eliminar mascota');
+          }
+
+          alert('Mascota eliminada');
+          await this.cargarMascotas();
+
+          // Disparar evento para recargar en SolicitudCita
+          window.dispatchEvent(new CustomEvent('mascota-eliminada'));
+        } catch (error: unknown) {
+          console.error('Error eliminando mascota:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Error al eliminar la mascota';
+          alert(errorMessage);
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      formatearFecha(fecha: string) {
+        if (!fecha) return '';
+        const f = new Date(fecha + 'T00:00:00');
+        return f.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+      },
+    }
+  }
+
+  (window as any).misMascotas = misMascotas;
+</script>
+
+<style>
+  .mis-mascotas-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+</style>
