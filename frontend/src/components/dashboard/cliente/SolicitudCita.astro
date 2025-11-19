@@ -1,0 +1,308 @@
+---
+---
+
+<div class="solicitud-cita-container manrope" x-data="solicitudCita()">
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Solicitar Cita</h2>
+    <p class="text-gray-600">Selecciona un veterinario y un horario disponible para agendar tu cita</p>
+  </div>
+
+  <!-- Selector de veterinario -->
+  <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
+    <label class="block text-sm font-medium text-gray-700 mb-3">Selecciona un veterinario</label>
+    <select x-model="veterinarioSeleccionado" @change="onSelectVeterinario()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+      <option value="">-- Selecciona un veterinario --</option>
+      <template x-for="vet in veterinarios" :key="vet.id">
+        <option :value="vet.id" x-text="'Dr. ' + vet.nombreCompleto"></option>
+      </template>
+    </select>
+  </div>
+
+  <!-- Calendario de disponibilidades -->
+  <template x-if="veterinarioSeleccionado && disponibilidades.length > 0">
+    <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Horarios Disponibles</h3>
+      
+      <!-- Agrupar por fecha -->
+      <div class="space-y-4">
+        <template x-for="grupo in disponibilidadesPorFecha" :key="grupo.fecha">
+          <div class="border-l-4 border-green-500 pl-4">
+            <h4 class="font-semibold text-gray-800 mb-2" x-text="formatearFecha(grupo.fecha)"></h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <template x-for="bloque in grupo.bloques" :key="bloque.id">
+                <button 
+                  @click="seleccionarBloque(bloque)"
+                  :class="bloqueSeleccionado?.id === bloque.id ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-orange-50 hover:border-orange-400'"
+                  class="px-4 py-3 border-2 rounded-lg font-medium transition-all"
+                >
+                  <span x-text="bloque.hora_inicio + ' - ' + bloque.hora_fin"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- Mensaje si no hay disponibilidades -->
+  <template x-if="veterinarioSeleccionado && disponibilidades.length === 0">
+    <div class="bg-gray-50 rounded-lg p-8 text-center">
+      <p class="text-gray-500">No hay horarios disponibles para este veterinario en este momento.</p>
+    </div>
+  </template>
+
+  <!-- Formulario de confirmación -->
+  <template x-if="bloqueSeleccionado">
+    <div class="bg-white rounded-2xl shadow-lg p-6 mt-6 border border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirmar Cita</h3>
+      
+      <div class="space-y-4">
+        <!-- Resumen -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <p class="text-sm text-gray-600">Fecha: <strong x-text="formatearFecha(bloqueSeleccionado.fecha)"></strong></p>
+          <p class="text-sm text-gray-600">Horario: <strong x-text="bloqueSeleccionado.hora_inicio + ' - ' + bloqueSeleccionado.hora_fin"></strong></p>
+          <p class="text-sm text-gray-600">Veterinario: <strong x-text="bloqueSeleccionado.veterinario?.nombreCompleto ? 'Dr. ' + bloqueSeleccionado.veterinario.nombreCompleto : 'N/A'"></strong></p>
+        </div>
+
+        <!-- Selector de paciente -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona tu mascota</label>
+          <select x-model="pacienteSeleccionado" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+            <option value="">-- Selecciona una mascota --</option>
+            <template x-for="p in misPacientes" :key="p.id">
+              <option :value="p.id" x-text="p.nombre"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Motivo -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Motivo de la consulta (opcional)</label>
+          <textarea 
+            x-model="motivo" 
+            rows="3" 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            placeholder="Describe brevemente el motivo de la consulta..."
+          ></textarea>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3 justify-end">
+          <button 
+            @click="cancelar()" 
+            class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-all"
+          >
+            Cancelar
+          </button>
+          <button 
+            @click="confirmarSolicitud()" 
+            :disabled="!pacienteSeleccionado || cargando"
+            class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span x-text="cargando ? 'Agendando...' : 'Confirmar Cita'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+  // @ts-ignore
+  import { obtenerVeterinarios, obtenerDisponibilidadesPorMes, obtenerPacientes, crearCita, actualizarDisponibilidad } from '../../../lib/disponibilidad';
+  // @ts-ignore
+  import { loadSession } from '../../../lib/authHelpers.js';
+
+  function solicitudCita() {
+    const hoy = new Date();
+    
+    return {
+      veterinarios: [] as any[],
+      veterinarioSeleccionado: null as number | null,
+      disponibilidades: [] as any[],
+      bloqueSeleccionado: null as any,
+      misPacientes: [] as any[],
+      pacienteSeleccionado: null as number | null,
+      motivo: '',
+      cargando: false,
+
+      get disponibilidadesPorFecha() {
+        // Agrupar disponibilidades por fecha
+        const grupos: Record<string, any[]> = {};
+        
+        this.disponibilidades.forEach((disp: any) => {
+          if (disp.estado === 'disponible') {
+            if (!grupos[disp.fecha]) {
+              grupos[disp.fecha] = [];
+            }
+            grupos[disp.fecha].push(disp);
+          }
+        });
+
+        // Convertir a array y ordenar por fecha
+        return Object.keys(grupos)
+          .sort()
+          .map(fecha => ({
+            fecha,
+            bloques: grupos[fecha].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
+          }));
+      },
+
+      async init() {
+        console.log('Inicializando solicitud de cita');
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        try {
+          // Cargar veterinarios
+          this.veterinarios = await obtenerVeterinarios();
+          console.log('Veterinarios cargados:', this.veterinarios);
+
+          // Cargar pacientes del cliente
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+          const clienteId = session?.appUser?.profile?.id || null;
+
+          if (jwt && clienteId) {
+            // Cargar pacientes del cliente
+            const todosPacientes = await obtenerPacientes(jwt);
+            // Filtrar solo los pacientes del cliente actual
+            this.misPacientes = todosPacientes.filter((p: any) => p.cliente?.id === clienteId);
+            console.log('Mis pacientes:', this.misPacientes);
+          }
+        } catch (error) {
+          console.error('Error en init:', error);
+        }
+      },
+
+      async onSelectVeterinario() {
+        if (!this.veterinarioSeleccionado) {
+          this.disponibilidades = [];
+          return;
+        }
+
+        console.log('Cargando disponibilidades del veterinario:', this.veterinarioSeleccionado);
+        
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+
+          // Cargar disponibilidades del mes actual y siguiente
+          const mesActual = hoy.getMonth() + 1;
+          const anioActual = hoy.getFullYear();
+          
+          const dispMesActual = await obtenerDisponibilidadesPorMes(mesActual, anioActual, this.veterinarioSeleccionado, jwt);
+          
+          let dispMesSiguiente: any[] = [];
+          if (mesActual === 12) {
+            dispMesSiguiente = await obtenerDisponibilidadesPorMes(1, anioActual + 1, this.veterinarioSeleccionado, jwt);
+          } else {
+            dispMesSiguiente = await obtenerDisponibilidadesPorMes(mesActual + 1, anioActual, this.veterinarioSeleccionado, jwt);
+          }
+
+          // Combinar y filtrar solo disponibles y futuras
+          const fechaHoy = new Date();
+          fechaHoy.setHours(0, 0, 0, 0);
+
+          this.disponibilidades = [...dispMesActual, ...dispMesSiguiente].filter((d: any) => {
+            const fechaDisp = new Date(d.fecha + 'T00:00:00');
+            return d.estado === 'disponible' && fechaDisp >= fechaHoy;
+          });
+
+          console.log('Disponibilidades cargadas:', this.disponibilidades);
+        } catch (error) {
+          console.error('Error cargando disponibilidades:', error);
+          this.disponibilidades = [];
+        }
+      },
+
+      seleccionarBloque(bloque: any) {
+        this.bloqueSeleccionado = bloque;
+        console.log('Bloque seleccionado:', bloque);
+      },
+
+      cancelar() {
+        this.bloqueSeleccionado = null;
+        this.pacienteSeleccionado = null;
+        this.motivo = '';
+      },
+
+      async confirmarSolicitud() {
+        if (!this.bloqueSeleccionado || !this.pacienteSeleccionado) {
+          alert('Por favor selecciona una mascota');
+          return;
+        }
+
+        this.cargando = true;
+
+        try {
+          const session = loadSession();
+          const jwt = session?.jwt || null;
+          const clienteId = session?.appUser?.profile?.id || null;
+
+          // Crear la cita
+          const cita = await crearCita({
+            fecha: this.bloqueSeleccionado.fecha,
+            hora: this.bloqueSeleccionado.hora_inicio,
+            motivo: this.motivo,
+            pacienteId: this.pacienteSeleccionado,
+            veterinarioId: this.bloqueSeleccionado.veterinario?.id || null,
+            recepcionistaId: null, // Cliente agenda directamente
+            disponibilidadId: this.bloqueSeleccionado.id,
+            jwt,
+          });
+
+          console.log('Cita creada:', cita);
+
+          // Marcar disponibilidad como ocupada
+          const docId = this.bloqueSeleccionado.documentId || this.bloqueSeleccionado._documentId;
+          if (docId) {
+            await actualizarDisponibilidad(docId, { estado: 'ocupado', disponible: false, cita: cita.id }, jwt);
+          }
+
+          alert('¡Cita agendada exitosamente!');
+          
+          // Resetear formulario
+          this.bloqueSeleccionado = null;
+          this.pacienteSeleccionado = null;
+          this.motivo = '';
+          
+          // Recargar disponibilidades
+          await this.onSelectVeterinario();
+
+        } catch (error: unknown) {
+          console.error('Error confirmando cita:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Error al agendar la cita';
+          alert(errorMessage);
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      formatearFecha(fechaISO: string) {
+        if (!fechaISO) return '';
+        
+        const fecha = new Date(fechaISO + 'T00:00:00');
+        const opciones: Intl.DateTimeFormatOptions = { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        };
+        
+        return fecha.toLocaleDateString('es-ES', opciones);
+      },
+    }
+  }
+
+  (window as any).solicitudCita = solicitudCita;
+</script>
+
+<style>
+  .solicitud-cita-container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+</style>

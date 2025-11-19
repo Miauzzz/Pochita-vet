@@ -1,47 +1,236 @@
 ---
 ---
 
-<div class="gestion-disponibilidad" x-data="gestionDisponibilidad()">
-  <h2 class="mb-4 text-xl font-semibold">Mi disponibilidad</h2>
+<div class="gestion-disponibilidad manrope" x-data="gestionDisponibilidad()">
+  <!-- Header -->
+  <div class="mb-8">
+    <h2 class="text-3xl font-bold text-gray-900 mb-2">Mi Disponibilidad</h2>
+    <p class="text-gray-600">Gestiona tus horarios de atención para que los clientes puedan agendar citas</p>
+  </div>
 
-  <form @submit.prevent="crear()" class="mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-      <input type="date" x-model="fecha" required class="p-2 border rounded" />
-      <input type="time" x-model="hora_inicio" required class="p-2 border rounded" />
-      <input type="time" x-model="hora_fin" required class="p-2 border rounded" />
-      <button type="submit" :disabled="cargando" class="px-4 py-2 bg-black text-white rounded">
-        <span x-show="!cargando">Agregar</span>
-        <span x-show="cargando">Guardando...</span>
+  <!-- Formulario de creación -->
+  <div class="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-100">
+    <h3 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Agregar Nueva Disponibilidad
+    </h3>
+    
+    <form @submit.prevent="crear()" class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Fecha -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+          <input 
+            type="date" 
+            x-model="fecha" 
+            :min="fechaMinima"
+            required 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+          />
+        </div>
+        
+        <!-- Hora inicio -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Hora de Inicio</label>
+          <input 
+            type="time" 
+            x-model="hora_inicio" 
+            required 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+          />
+        </div>
+        
+        <!-- Hora fin -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Hora de Fin</label>
+          <input 
+            type="time" 
+            x-model="hora_fin" 
+            required 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+          />
+        </div>
+      </div>
+      
+      <button 
+        type="submit" 
+        :disabled="cargando"
+        class="w-full md:w-auto px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        <svg x-show="!cargando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        <svg x-show="cargando" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        <span x-text="cargando ? 'Guardando...' : 'Agregar Disponibilidad'"></span>
       </button>
-    </div>
-  </form>
+    </form>
+  </div>
 
-  <div>
-    <h3 class="font-semibold mb-2">Tus franjas actuales</h3>
-    <template x-if="disponibilidades.length === 0">
-      <div class="text-sm text-gray-600">No tienes disponibilidades aún.</div>
+  <!-- Lista de disponibilidades -->
+  <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        Tus Horarios Disponibles
+      </h3>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full" x-text="`${disponibilidadesFiltradas.length} ${disponibilidadesFiltradas.length === 1 ? 'horario' : 'horarios'}`"></span>
+        <button 
+          x-show="tieneHistorial"
+          @click="mostrarHistorial = !mostrarHistorial"
+          class="text-sm px-3 py-1 rounded-lg transition-all"
+          :class="mostrarHistorial ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+        >
+          <span x-text="mostrarHistorial ? 'Ocultar pasados' : 'Ver historial'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <template x-if="disponibilidadesFiltradas.length === 0">
+      <div class="text-center py-12">
+        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <p class="text-gray-500 text-lg" x-text="mostrarHistorial ? 'No hay horarios en el historial' : 'No tienes horarios futuros'"></p>
+        <p class="text-gray-400 text-sm mt-1" x-show="!mostrarHistorial">Agrega tu primer horario usando el formulario de arriba</p>
+      </div>
     </template>
 
-    <ul class="space-y-2 mt-3">
-      <template x-for="d in disponibilidades" :key="d.id">
-        <li class="p-2 border rounded flex justify-between items-center">
-          <div>
-            <div class="font-medium" x-text="d.attributes.fecha"></div>
-            <div class="text-sm text-gray-600" x-text="d.attributes.hora_inicio + ' - ' + d.attributes.hora_fin"></div>
+    <!-- Lista de items -->
+    <div class="space-y-3" x-show="disponibilidadesFiltradas.length > 0">
+      <template x-for="d in disponibilidadesFiltradas" :key="d.documentId">
+        <div class="group bg-gradient-to-r from-orange-50 to-white border border-orange-100 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <!-- Info -->
+            <div class="flex items-center gap-4 flex-1">
+              <!-- Icono de calendario -->
+              <div class="bg-orange-500 text-white rounded-lg p-3 flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              
+              <!-- Detalles -->
+              <div class="flex-1">
+                <div class="font-semibold text-gray-900 text-lg flex items-center gap-2">
+                  <span x-text="formatearFecha(d.fecha)"></span>
+                  <span 
+                    x-show="esHoy(d.fecha)" 
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500 text-white animate-pulse"
+                  >
+                    HOY
+                  </span>
+                </div>
+                <div class="text-gray-600 flex items-center gap-1 mt-1">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span x-text="formatearHora(d.hora_inicio) + ' - ' + formatearHora(d.hora_fin)"></span>
+                </div>
+                <div class="mt-1">
+                  <span 
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    :class="esPasada(d.fecha, d.hora_fin) ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-800'"
+                    x-text="esPasada(d.fecha, d.hora_fin) ? 'Expirado' : 'Disponible'"
+                  >
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Acciones -->
+            <div class="flex items-center gap-2">
+              <button 
+                @click="editando === d.documentId ? cancelarEdicion() : editar(d)"
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 flex items-center gap-2"
+                :class="editando === d.documentId ? 'ring-2 ring-gray-400' : ''"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span x-text="editando === d.documentId ? 'Cancelar' : 'Editar'"></span>
+              </button>
+              
+              <button 
+                @click="eliminar(d.documentId)"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95 flex items-center gap-2"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Eliminar
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button @click="eliminar(d.id)" class="px-3 py-1 bg-red-600 text-white rounded">Eliminar</button>
+          
+          <!-- Formulario de edición -->
+          <div x-show="editando === d.documentId" x-transition class="mt-4 pt-4 border-t border-orange-200">
+            <form @submit.prevent="actualizar()" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
+                  <input 
+                    type="date" 
+                    x-model="fechaEdit" 
+                    :min="fechaMinima"
+                    required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Hora Inicio</label>
+                  <input 
+                    type="time" 
+                    x-model="horaInicioEdit" 
+                    required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Hora Fin</label>
+                  <input 
+                    type="time" 
+                    x-model="horaFinEdit" 
+                    required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+              <div class="flex gap-2 justify-end">
+                <button 
+                  type="button"
+                  @click="cancelarEdicion()"
+                  class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-all text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  :disabled="cargando"
+                  class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 text-sm"
+                >
+                  <span x-text="cargando ? 'Guardando...' : 'Guardar Cambios'"></span>
+                </button>
+              </div>
+            </form>
           </div>
-        </li>
+        </div>
       </template>
-    </ul>
+    </div>
   </div>
 </div>
 
 <script>
   // @ts-ignore
   import { loadSession } from '../../../lib/authHelpers';
-  import { obtenerDisponibilidadPorVeterinario, crearDisponibilidad, eliminarDisponibilidad } from '../../../lib/disponibilidad';
+  import { obtenerDisponibilidades, crearDisponibilidad, eliminarDisponibilidad, actualizarDisponibilidad } from '../../../lib/disponibilidad';
 
   function gestionDisponibilidad() {
     return {
@@ -50,6 +239,17 @@
       hora_fin: '',
       cargando: false,
       disponibilidades: [],
+      editando: null as string | null,
+      fechaEdit: '',
+      horaInicioEdit: '',
+      horaFinEdit: '',
+      mostrarHistorial: false,
+
+      get fechaMinima() {
+        // Retorna la fecha de hoy en formato YYYY-MM-DD
+        const hoy = new Date();
+        return hoy.toISOString().split('T')[0];
+      },
 
       async init() {
         await this.cargar();
@@ -57,10 +257,20 @@
 
       async cargar() {
         const session = loadSession();
-        if (!session) return;
-        const vetId = session.appUser?.profile?.id;
+        if (!session) {
+          console.error('No hay sesión activa');
+          return;
+        }
+        
+        console.log('Cargando disponibilidades del veterinario...');
+        
         try {
-          this.disponibilidades = await obtenerDisponibilidadPorVeterinario(vetId);
+          // find() filtra automáticamente por veterinario cuando se pasa JWT
+          this.disponibilidades = await obtenerDisponibilidades(session.jwt);
+          console.log('Disponibilidades cargadas:', this.disponibilidades.length);
+          if (this.disponibilidades.length > 0) {
+            console.log('Primera disponibilidad:', this.disponibilidades[0]);
+          }
         } catch (err) {
           console.error('Error cargando disponibilidades:', err);
           this.disponibilidades = [];
@@ -74,14 +284,17 @@
 
         this.cargando = true;
         try {
-          const vetId = session.appUser?.profile?.id;
-          const nueva = await crearDisponibilidad({ fecha: this.fecha, hora_inicio: this.hora_inicio, hora_fin: this.hora_fin, veterinarioId: vetId, jwt: session.jwt });
-          // refrescar lista
+          const nueva = await crearDisponibilidad({ 
+            fecha: this.fecha, 
+            hora_inicio: this.hora_inicio, 
+            hora_fin: this.hora_fin, 
+            jwt: session.jwt 
+          });
           await this.cargar();
           this.fecha = '';
           this.hora_inicio = '';
           this.hora_fin = '';
-        } catch (err) {
+        } catch (err: any) {
           console.error('Error creando disponibilidad:', err);
           alert(err.message || 'Error al crear disponibilidad');
         } finally {
@@ -89,17 +302,121 @@
         }
       },
 
-      async eliminar(id) {
-        if (!confirm('Eliminar esta disponibilidad?')) return;
+      editar(disponibilidad: any) {
+        console.log('Editando disponibilidad:', disponibilidad);
+        this.editando = disponibilidad.documentId;
+        this.fechaEdit = disponibilidad.fecha;
+        // Convertir hora de formato HH:mm:ss.SSS a HH:mm
+        this.horaInicioEdit = disponibilidad.hora_inicio.substring(0, 5);
+        this.horaFinEdit = disponibilidad.hora_fin.substring(0, 5);
+      },
+
+      cancelarEdicion() {
+        this.editando = null;
+        this.fechaEdit = '';
+        this.horaInicioEdit = '';
+        this.horaFinEdit = '';
+      },
+
+      async actualizar() {
         const session = loadSession();
         if (!session) { alert('Debes iniciar sesión'); return; }
-        try {
-          await eliminarDisponibilidad(id, session.jwt);
-          await this.cargar();
-        } catch (err) {
-          console.error('Error eliminando disponibilidad:', err);
-          alert(err.message || 'Error al eliminar');
+        if (!this.editando) { 
+          alert('No hay disponibilidad seleccionada'); 
+          return; 
         }
+        if (!this.fechaEdit || !this.horaInicioEdit || !this.horaFinEdit) { 
+          alert('Completa todos los campos'); 
+          return; 
+        }
+
+        this.cargando = true;
+        try {
+          console.log('Actualizando disponibilidad ID:', this.editando);
+          await actualizarDisponibilidad(
+            this.editando,
+            {
+              fecha: this.fechaEdit,
+              hora_inicio: this.horaInicioEdit,
+              hora_fin: this.horaFinEdit,
+            },
+            session.jwt
+          );
+          console.log('Disponibilidad actualizada exitosamente');
+          this.cancelarEdicion();
+          await this.cargar();
+        } catch (err: any) {
+          console.error('Error actualizando disponibilidad:', err);
+          alert(err.message || 'Error al actualizar disponibilidad');
+          // Si hay error, cancelar edición y recargar para mostrar estado actual
+          this.cancelarEdicion();
+          await this.cargar();
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      async eliminar(documentId: string) {
+        if (!confirm('¿Estás seguro de eliminar esta disponibilidad?')) return;
+        const session = loadSession();
+        if (!session) { alert('Debes iniciar sesión'); return; }
+        
+        this.cargando = true;
+        try {
+          console.log('Eliminando disponibilidad con documentId:', documentId);
+          await eliminarDisponibilidad(documentId, session.jwt);
+          console.log('Disponibilidad eliminada exitosamente, recargando lista...');
+          // Recargar la lista
+          await this.cargar();
+        } catch (err: any) {
+          console.error('Error eliminando disponibilidad:', err);
+          alert(err.message || 'Error al eliminar la disponibilidad');
+        } finally {
+          this.cargando = false;
+        }
+      },
+
+      formatearFecha(fecha: string) {
+        const [year, month, day] = fecha.split('-');
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        return `${day} ${meses[parseInt(month) - 1]} ${year}`;
+      },
+
+      formatearHora(hora: string) {
+        // Convierte HH:mm:ss.SSS a HH:mm
+        return hora.substring(0, 5);
+      },
+
+      esHoy(fecha: string) {
+        const hoy = new Date();
+        const fechaHoy = hoy.toISOString().split('T')[0];
+        return fecha === fechaHoy;
+      },
+
+      esPasada(fecha: string, horaFin: string) {
+        const ahora = new Date();
+        const fechaHora = new Date(`${fecha}T${horaFin}`);
+        return fechaHora < ahora;
+      },
+
+      get disponibilidadesFiltradas() {
+        if (this.mostrarHistorial) {
+          return this.disponibilidades;
+        }
+        // Filtrar solo futuras (backend ya filtra, pero por si acaso)
+        const ahora = new Date();
+        return this.disponibilidades.filter((d: any) => {
+          const fechaHora = new Date(`${d.fecha}T${d.hora_fin}`);
+          return fechaHora >= ahora;
+        });
+      },
+
+      get tieneHistorial() {
+        const ahora = new Date();
+        return this.disponibilidades.some((d: any) => {
+          const fechaHora = new Date(`${d.fecha}T${d.hora_fin}`);
+          return fechaHora < ahora;
+        });
       }
     }
   }
@@ -108,5 +425,15 @@
 </script>
 
 <style>
-  .gestion-disponibilidad { background: white; padding: 1rem; border-radius: 8px; }
+  .gestion-disponibilidad { 
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  @media (max-width: 640px) {
+    .gestion-disponibilidad {
+      padding: 1rem;
+    }
+  }
 </style>
