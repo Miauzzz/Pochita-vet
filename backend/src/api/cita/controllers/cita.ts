@@ -3,6 +3,7 @@
  */
 
 import { factories } from '@strapi/strapi'
+import { notificarRecepcionistas } from '../../../utils/notificaciones';
 
 export default factories.createCoreController('api::cita.cita', ({ strapi }) => ({
   /**
@@ -173,6 +174,37 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
         console.warn('⚠️ No se proporcionó disponibilidadId, no se actualizará el estado');
       }
 
+      // Crear notificación para recepcionistas sobre nueva cita
+      try {
+        const citaId = typeof entity.id === 'string' ? parseInt(entity.id) : entity.id;
+        const citaCompleta: any = await strapi.entityService.findOne('api::cita.cita', citaId, {
+          populate: ['paciente', 'veterinario'],
+        });
+
+        if (citaCompleta) {
+          const pacienteNombre = citaCompleta.paciente?.nombre || 'mascota';
+          const veterinarioNombre = citaCompleta.veterinario?.nombreCompleto || citaCompleta.veterinario?.username || 'veterinario';
+          const fechaFormateada = new Date(citaCompleta.fecha).toLocaleDateString('es-CL');
+          const horaFormateada = citaCompleta.hora?.substring(0, 5) || 'N/A';
+
+          const titulo = 'Nueva cita pendiente';
+          const mensaje = `Nueva cita de ${pacienteNombre} con Dr. ${veterinarioNombre} el ${fechaFormateada} a las ${horaFormateada}`;
+
+          await notificarRecepcionistas(
+            strapi,
+            'general',
+            titulo,
+            mensaje,
+            user.id,
+            citaId
+          );
+
+          console.log('📢 Notificación enviada: Nueva cita creada');
+        }
+      } catch (notifError: any) {
+        console.error('❌ Error creando notificación:', notifError.message);
+      }
+
       return { data: entity };
     } catch (error: any) {
       console.error('Error al crear cita:', error);
@@ -223,7 +255,7 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
         if (requestData.estado === 'cancelada') {
           try {
             const citaActual: any = await strapi.entityService.findOne('api::cita.cita', documentId, {
-              populate: ['disponibilidad']
+              populate: ['disponibilidad', 'veterinario', 'paciente']
             });
             
             if (citaActual?.disponibilidad?.documentId) {
@@ -238,6 +270,28 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
               });
               
               console.log('✅ Disponibilidad liberada');
+            }
+
+            // Crear notificación para recepcionistas
+            if (roleName === 'Veterinario' && citaActual) {
+              const veterinarioNombre = citaActual.veterinario?.nombreCompleto || citaActual.veterinario?.username || 'Veterinario';
+              const fechaFormateada = new Date(citaActual.fecha).toLocaleDateString('es-CL');
+              const horaFormateada = citaActual.hora?.substring(0, 5) || 'N/A';
+              const pacienteNombre = citaActual.paciente?.nombre || 'mascota';
+
+              const titulo = 'Cita cancelada por veterinario';
+              const mensaje = `Dr. ${veterinarioNombre} canceló cita de ${pacienteNombre} el ${fechaFormateada} a las ${horaFormateada}`;
+
+              await notificarRecepcionistas(
+                strapi,
+                'cancelacion',
+                titulo,
+                mensaje,
+                user.id,
+                citaActual.id
+              );
+
+              console.log('📢 Notificación enviada: Veterinario canceló cita');
             }
           } catch (dispError: any) {
             console.error('❌ Error al liberar disponibilidad:', dispError.message);

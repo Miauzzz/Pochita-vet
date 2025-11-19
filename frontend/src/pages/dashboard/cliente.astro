@@ -8,33 +8,66 @@ import Select from '../../components/ui/Select.astro';
 import Loading from '../../components/ui/Loading.astro';
 ---
 
-<BaseDashboard>
-  <div class="max-w-6xl mx-auto p-4 space-y-6">
+<!-- Script de verificación ANTES de renderizar contenido -->
+<script is:inline>
+  // Verificar autenticación inmediatamente antes de mostrar la página
+  (function() {
+    const jwt = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
+    const appUserStr = localStorage.getItem('appUser') || sessionStorage.getItem('appUser');
     
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900">Mi Panel</h1>
-      <div class="text-sm text-gray-600" id="user-info">Cargando...</div>
-    </div>
+    if (!jwt || !appUserStr) {
+      window.location.replace('/login');
+      return;
+    }
+    
+    try {
+      const appUser = JSON.parse(appUserStr);
+      const userRole = appUser?.usuario?.tipo_usuario?.toLowerCase();
+      
+      // Verificar que sea cliente
+      if (userRole !== 'cliente') {
+        window.location.replace(`/dashboard/${userRole}`);
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando sesión:', error);
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/login');
+    }
+  })();
+</script>
 
-    <!-- Mis Mascotas -->
-    <section>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <span>🐾</span>
-          <span>Mis Mascotas</span>
-        </h2>
-        <button onclick="window.open_modal_nueva_mascota()" class="px-3 py-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
-          + Agregar Mascota
-        </button>
-      </div>
+<BaseDashboard>
+  <div class="max-w-7xl mx-auto p-4">
+    <div class="flex flex-col lg:flex-row gap-4">
+      
+      <!-- Contenido Principal -->
+      <div class="flex-1 space-y-6">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600" id="user-info">Cargando...</div>
+        </div>
 
-      <div id="mascotas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card padding="md">
-          <Loading size="sm" text="Cargando mascotas..." />
-        </Card>
-      </div>
-    </section>
+        <!-- Mis Mascotas -->
+        <section>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <span>🐾</span>
+              <span>Mis Mascotas</span>
+            </h2>
+            <button onclick="window.open_modal_nueva_mascota()" class="px-3 py-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
+              + Agregar Mascota
+            </button>
+          </div>
+
+          <div id="mascotas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card padding="md">
+              <Loading size="sm" text="Cargando mascotas..." />
+            </Card>
+          </div>
+        </section>
 
     <!-- Solicitar Cita -->
     <section>
@@ -96,10 +129,18 @@ import Loading from '../../components/ui/Loading.astro';
       </h2>
 
       <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
-        <Button size="sm" variant="primary" data-filter="todas">Todas</Button>
-        <Button size="sm" variant="ghost" data-filter="pendiente">Pendientes</Button>
-        <Button size="sm" variant="ghost" data-filter="confirmada">Confirmadas</Button>
-        <Button size="sm" variant="ghost" data-filter="cancelada">Canceladas</Button>
+        <button data-filter="todas" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600">
+          Todas
+        </button>
+        <button data-filter="pendiente" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Pendientes
+        </button>
+        <button data-filter="confirmada" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Confirmadas
+        </button>
+        <button data-filter="cancelada" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Canceladas
+        </button>
       </div>
 
       <div id="citas-container" class="space-y-3">
@@ -110,6 +151,31 @@ import Loading from '../../components/ui/Loading.astro';
     </section>
 
   </div>
+
+  <!-- Panel Lateral: Notificaciones -->
+  <aside class="w-full lg:w-80 shrink-0 order-first lg:order-last">
+    <Card padding="sm" class="sticky top-4">
+      <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+        <span class="text-base">🔔</span>
+        <h2 class="text-sm font-bold text-gray-900">Notificaciones</h2>
+        <span id="badge-notificaciones" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+      </div>
+      
+      <div id="notificaciones-container" class="space-y-2 max-h-[200px] overflow-y-auto">
+        <Loading size="sm" />
+      </div>
+
+      <button 
+        id="btn-marcar-leidas"
+        class="w-full mt-3 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors"
+      >
+        Marcar todas como leídas
+      </button>
+    </Card>
+  </aside>
+
+</div>
+</div>
 
   <!-- Modal: Nueva Mascota -->
   <Modal id="modal_nueva_mascota" title="Agregar Mascota" size="md">
@@ -168,6 +234,65 @@ import Loading from '../../components/ui/Loading.astro';
     </form>
   </Modal>
 
+  <!-- Modal: Editar Mascota -->
+  <Modal id="modal_editar_mascota" title="Editar Mascota" size="md">
+    <form id="form-editar-mascota" class="space-y-4">
+      <input type="hidden" name="id" id="edit-id" />
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+        <Input type="text" name="nombre" id="edit-nombre" placeholder="Ej: Firulais" required />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Especie *</label>
+          <Select name="especie" id="edit-especie" required>
+            <option value="">Selecciona</option>
+            <option value="Perro">Perro</option>
+            <option value="Gato">Gato</option>
+            <option value="Ave">Ave</option>
+            <option value="Conejo">Conejo</option>
+            <option value="Roedor">Roedor</option>
+            <option value="Reptil">Reptil</option>
+            <option value="Otro">Otro</option>
+          </Select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Raza</label>
+          <Input type="text" name="raza" id="edit-raza" placeholder="Ej: Labrador" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
+          <Select name="sexo" id="edit-sexo">
+            <option value="">Selecciona</option>
+            <option value="Macho">Macho</option>
+            <option value="Hembra">Hembra</option>
+            <option value="Sin determinar">Sin determinar</option>
+          </Select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento</label>
+          <Input type="date" name="fecha_nacimiento" id="edit-fecha-nacimiento" />
+        </div>
+      </div>
+
+      <div class="flex gap-3 justify-end pt-4 border-t">
+        <button type="button" onclick="window.close_modal_editar_mascota()" class="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition-colors">
+          Cancelar
+        </button>
+        <Button type="submit" variant="primary">
+          Actualizar Mascota
+        </Button>
+      </div>
+    </form>
+  </Modal>
+
   <!-- Modal: Seleccionar Disponibilidad -->
   <Modal id="modal_disponibilidad" title="Seleccionar Fecha y Hora" size="lg">
     <div id="disponibilidad-content">
@@ -182,15 +307,21 @@ import Loading from '../../components/ui/Loading.astro';
   import { PacientesAPI } from '../../lib/api/pacientes.js';
   import { CitasAPI } from '../../lib/api/citas.js';
   import { DisponibilidadesAPI } from '../../lib/api/disponibilidades.js';
+  import { NotificacionesAPI } from '../../lib/api/notificaciones.js';
 
-  let session, pacientesAPI, citasAPI, disponibilidadesAPI;
+  let session, pacientesAPI, citasAPI, disponibilidadesAPI, notificacionesAPI;
   let mascotasData = [];
   let citasData = [];
+  let notificacionesData = [];
   let filtroActual = 'todas';
 
   // Inicializar
   document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Dashboard cliente iniciando...');
+    
+    // Verificar autenticación y rol ANTES de cargar datos
+    const { requireRole } = await import('../../lib/authHelpers.js');
+    await requireRole(['cliente']);
     
     session = loadSession();
     if (!session?.jwt) {
@@ -204,6 +335,7 @@ import Loading from '../../components/ui/Loading.astro';
     pacientesAPI = new PacientesAPI(session.jwt);
     citasAPI = new CitasAPI(session.jwt);
     disponibilidadesAPI = new DisponibilidadesAPI(session.jwt);
+    notificacionesAPI = new NotificacionesAPI(session.jwt);
 
     // Mostrar info usuario
     document.getElementById('user-info').textContent = session.appUser.profile.email;
@@ -213,11 +345,27 @@ import Loading from '../../components/ui/Loading.astro';
     await Promise.all([
       cargarMascotas(),
       cargarCitas(),
-      cargarVeterinarios()
+      cargarVeterinarios(),
+      cargarNotificaciones()
     ]);
 
     // Eventos
     setupEventos();
+    
+    // Recargar cada 10s para actualizaciones en tiempo real
+    setInterval(async () => {
+      console.log('🔄 Actualizando datos automáticamente...');
+      await Promise.all([cargarMascotasSinResetear(), cargarCitas(), cargarNotificaciones()]);
+    }, 10000);
+
+    // Escuchar cambios de visibilidad de la página
+    document.addEventListener('visibilitychange', async () => {
+      if (!document.hidden) {
+        console.log('👁️ Página visible - actualizando datos...');
+        await Promise.all([cargarMascotasSinResetear(), cargarCitas(), cargarNotificaciones()]);
+      }
+    });
+    
     console.log('✅ Dashboard cliente listo');
   });
 
@@ -228,9 +376,43 @@ import Loading from '../../components/ui/Loading.astro';
       actualizarSelectMascotas();
     } catch (error) {
       console.error('Error cargando mascotas:', error);
+      
+      // Si es error 401, limpiar sesión y redirigir
+      if (error.message.includes('credentials') || error.message.includes('401')) {
+        const { clearSession } = await import('../../lib/authHelpers.js');
+        clearSession();
+        window.location.href = '/login';
+        return;
+      }
+      
       document.getElementById('mascotas-container').innerHTML = `
         <div class="col-span-full text-center text-red-600 text-sm">${error.message}</div>
       `;
+    }
+  }
+
+  async function cargarMascotasSinResetear() {
+    // Cargar mascotas sin actualizar el select (para auto-reload)
+    try {
+      const selectMascota = document.getElementById('select-mascota');
+      const valorActual = selectMascota?.value;
+      
+      mascotasData = await pacientesAPI.getMisPacientes();
+      renderMascotas();
+      
+      // Restaurar selección si existía
+      if (valorActual && selectMascota) {
+        const optionExiste = Array.from(selectMascota.options).some(opt => opt.value === valorActual);
+        if (optionExiste) {
+          selectMascota.value = valorActual;
+        } else {
+          actualizarSelectMascotas();
+        }
+      } else {
+        actualizarSelectMascotas();
+      }
+    } catch (error) {
+      console.error('Error cargando mascotas:', error);
     }
   }
 
@@ -252,11 +434,33 @@ import Loading from '../../components/ui/Loading.astro';
     container.innerHTML = mascotasData.map(m => `
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
         <div class="flex items-start justify-between mb-3">
-          <div>
+          <div class="flex-1">
             <h3 class="font-semibold text-gray-900">${m.nombre}</h3>
             <p class="text-sm text-gray-600">${m.especie}${m.raza ? ` • ${m.raza}` : ''}</p>
           </div>
-          <span class="text-2xl">${getEmojiEspecie(m.especie)}</span>
+          <div class="flex items-start gap-2">
+            <button 
+              onclick="editarMascota('${m.documentId}')" 
+              class="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Editar mascota"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button 
+              onclick="eliminarMascota('${m.documentId}')" 
+              class="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="Eliminar mascota"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+            <span class="text-2xl ml-1">${getEmojiEspecie(m.especie)}</span>
+          </div>
         </div>
         ${m.sexo ? `<p class="text-xs text-gray-500">Sexo: ${m.sexo}</p>` : ''}
         ${m.fecha_nacimiento ? `<p class="text-xs text-gray-500">Nació: ${formatearFecha(m.fecha_nacimiento)}</p>` : ''}
@@ -284,9 +488,16 @@ import Loading from '../../components/ui/Loading.astro';
 
   function renderCitas() {
     const container = document.getElementById('citas-container');
-    const citasFiltradas = filtroActual === 'todas' 
+    let citasFiltradas = filtroActual === 'todas' 
       ? citasData 
       : citasData.filter(c => c.estado === filtroActual);
+
+    // Ordenar por fecha y hora (más próximas primero)
+    citasFiltradas = citasFiltradas.sort((a, b) => {
+      const fechaA = new Date(a.fecha + 'T' + (a.hora || '00:00:00'));
+      const fechaB = new Date(b.fecha + 'T' + (b.hora || '00:00:00'));
+      return fechaA - fechaB;
+    });
 
     if (citasFiltradas.length === 0) {
       container.innerHTML = `
@@ -302,7 +513,7 @@ import Loading from '../../components/ui/Loading.astro';
       const estadoTexto = c.estado === 'pendiente' ? 'Pendiente' : c.estado === 'confirmada' ? 'Confirmada' : 'Cancelada';
       
       return `
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 transition-all" data-cita-id="${c.id}">
           <div class="flex items-start justify-between mb-2">
             <div>
               <p class="font-semibold text-gray-900">${formatearFecha(c.fecha)} • ${c.hora?.substring(0, 5)}</p>
@@ -324,6 +535,92 @@ import Loading from '../../components/ui/Loading.astro';
         </div>
       `;
     }).join('');
+  }
+
+  async function cargarNotificaciones() {
+    try {
+      notificacionesData = await notificacionesAPI.getMisNotificaciones();
+      renderNotificaciones();
+      actualizarBadgeNotificaciones();
+    } catch (error) {
+      console.error('Error cargando notificaciones:', error);
+      
+      // Si es error 401, limpiar sesión y redirigir
+      if (error.message.includes('credentials') || error.message.includes('401')) {
+        const { clearSession } = await import('../../lib/authHelpers.js');
+        clearSession();
+        window.location.href = '/login';
+        return;
+      }
+      
+      document.getElementById('notificaciones-container').innerHTML = `
+        <div class="text-xs text-red-600 text-center p-2">Error cargando notificaciones</div>
+      `;
+    }
+  }
+
+  function renderNotificaciones() {
+    const container = document.getElementById('notificaciones-container');
+    
+    if (notificacionesData.length === 0) {
+      container.innerHTML = `
+        <div class="text-xs text-gray-500 text-center p-4">
+          No tienes notificaciones
+        </div>
+      `;
+      return;
+    }
+
+    // Mostrar todas las notificaciones pero con scroll en contenedor
+    container.innerHTML = notificacionesData.slice(0, 10).map(n => {
+      const iconoTipo = n.tipo === 'confirmacion' ? '✅' : 
+                        n.tipo === 'cancelacion' ? '❌' : 
+                        n.tipo === 'recordatorio' ? '⏰' : '📢';
+      
+      // Obtener ID de cita relacionada si existe
+      const citaId = n.cita_relacionada?.id || null;
+      const clickHandler = citaId 
+        ? `onclick="scrollYMarcarLeida(${n.id}, ${citaId})"`
+        : `onclick="marcarNotificacionLeida(${n.id})"`;
+      
+      return `
+        <div 
+          class="p-2 rounded cursor-pointer transition-colors ${n.leida ? 'bg-gray-50' : 'bg-blue-50 border border-blue-200'}"
+          ${clickHandler}
+        >
+          <div class="flex items-start gap-2">
+            <span class="text-sm">${iconoTipo}</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-gray-900 truncate">${n.titulo}</p>
+              <p class="text-xs text-gray-600 mt-0.5">${n.mensaje}</p>
+              <p class="text-xs text-gray-400 mt-1">${formatearFechaNotificacion(n.fecha_notificacion)}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function actualizarBadgeNotificaciones() {
+    const noLeidas = notificacionesData.filter(n => !n.leida).length;
+    const badge = document.getElementById('badge-notificaciones');
+    badge.textContent = noLeidas;
+    badge.style.display = noLeidas > 0 ? 'inline-block' : 'none';
+  }
+
+  function formatearFechaNotificacion(fecha) {
+    const ahora = new Date();
+    const fechaNot = new Date(fecha);
+    const diff = ahora - fechaNot;
+    const minutos = Math.floor(diff / 60000);
+    const horas = Math.floor(minutos / 60);
+    const dias = Math.floor(horas / 24);
+
+    if (minutos < 1) return 'Ahora';
+    if (minutos < 60) return `Hace ${minutos}min`;
+    if (horas < 24) return `Hace ${horas}h`;
+    if (dias < 7) return `Hace ${dias}d`;
+    return formatearFecha(fecha.split('T')[0]);
   }
 
   async function cargarVeterinarios() {
@@ -356,6 +653,26 @@ import Loading from '../../components/ui/Loading.astro';
         e.target.reset();
         await cargarMascotas();
         alert('✅ Mascota registrada exitosamente');
+      } catch (error) {
+        alert('❌ Error: ' + error.message);
+      }
+    });
+
+    // Form editar mascota
+    document.getElementById('form-editar-mascota').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const documentId = formData.get('id');
+      const datos = Object.fromEntries(formData);
+      delete datos.id; // No enviar el ID en el body
+
+      console.log('Actualizando mascota documentId:', documentId, 'con datos:', datos);
+
+      try {
+        await pacientesAPI.actualizarPaciente(documentId, datos);
+        window.close_modal_editar_mascota();
+        await cargarMascotas();
+        alert('✅ Mascota actualizada exitosamente');
       } catch (error) {
         alert('❌ Error: ' + error.message);
       }
@@ -404,23 +721,34 @@ import Loading from '../../components/ui/Loading.astro';
     });
 
     // Filtros de citas
-    // Filtros de citas
     document.querySelectorAll('[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
+        console.log('🔘 Filtro clickeado:', btn.dataset.filter);
+        
         // Remover estilo activo de todos los botones
         document.querySelectorAll('[data-filter]').forEach(b => {
           b.classList.remove('bg-orange-500', 'text-white', 'hover:bg-orange-600');
-          b.classList.add('bg-transparent', 'text-gray-700', 'hover:bg-gray-100');
+          b.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
         });
         
         // Aplicar estilo activo al botón clickeado
-        btn.classList.remove('bg-transparent', 'text-gray-700', 'hover:bg-gray-100');
+        btn.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
         btn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
         
         filtroActual = btn.dataset.filter;
-        console.log('🛠️ Filtro cambiado a:', filtroActual);
+        console.log('🛠️ Filtro aplicado:', filtroActual);
         renderCitas();
       });
+    });
+
+    // Botón marcar notificaciones como leídas
+    document.getElementById('btn-marcar-leidas').addEventListener('click', async () => {
+      try {
+        await notificacionesAPI.marcarTodasLeidas();
+        await cargarNotificaciones();
+      } catch (error) {
+        console.error('Error marcando notificaciones:', error);
+      }
     });
   }
 
@@ -560,4 +888,115 @@ import Loading from '../../components/ui/Loading.astro';
       year: 'numeric'
     });
   }
+
+  // Funciones globales para notificaciones
+  window.marcarNotificacionLeida = async (notificacionId) => {
+    try {
+      await notificacionesAPI.marcarLeida(notificacionId);
+      await cargarNotificaciones();
+    } catch (error) {
+      console.error('Error marcando notificación:', error);
+    }
+  };
+
+  window.scrollYMarcarLeida = async (notificacionId, citaId) => {
+    console.log('🎯 [CLIENTE] scrollYMarcarLeida llamado con:', { notificacionId, citaId });
+    
+    // Marcar como leída
+    try {
+      await notificacionesAPI.marcarLeida(notificacionId);
+      await cargarNotificaciones();
+    } catch (error) {
+      console.error('Error marcando notificación:', error);
+    }
+
+    console.log('📊 [CLIENTE] citasData disponible:', citasData);
+    
+    // Buscar la cita por ID en el array de datos
+    const cita = citasData.find(c => c.id === citaId);
+    console.log('🔍 [CLIENTE] Cita encontrada:', cita);
+    
+    if (!cita) {
+      console.log('❌ [CLIENTE] Cita no encontrada en los datos actuales');
+      return;
+    }
+
+    // Buscar el elemento en el DOM por data-cita-id
+    setTimeout(() => {
+      const citaElemento = document.querySelector(`[data-cita-id="${citaId}"]`);
+      console.log('🎨 [CLIENTE] Elemento DOM encontrado:', citaElemento);
+      
+      if (citaElemento) {
+        console.log('✅ [CLIENTE] Haciendo scroll al elemento');
+        citaElemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Destacar brevemente la cita
+        citaElemento.classList.add('ring-4', 'ring-orange-300', 'ring-offset-2');
+        setTimeout(() => {
+          citaElemento.classList.remove('ring-4', 'ring-orange-300', 'ring-offset-2');
+        }, 2500);
+      } else {
+        console.log('⚠️ [CLIENTE] Elemento no visible, intentando cambiar filtro');
+        // Si no está visible, cambiar filtro para mostrarla
+        const filtroBtn = document.querySelector(`[data-filter="${cita.estado}"]`);
+        console.log('🔘 [CLIENTE] Botón filtro encontrado:', filtroBtn, 'para estado:', cita.estado);
+        
+        if (filtroBtn) {
+          filtroBtn.click();
+          setTimeout(() => {
+            const elem = document.querySelector(`[data-cita-id="${citaId}"]`);
+            console.log('🔄 [CLIENTE] Elemento después de cambiar filtro:', elem);
+            
+            if (elem) {
+              elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              elem.classList.add('ring-4', 'ring-orange-300', 'ring-offset-2');
+              setTimeout(() => {
+                elem.classList.remove('ring-4', 'ring-orange-300', 'ring-offset-2');
+              }, 2500);
+            }
+          }, 300);
+        }
+      }
+    }, 100);
+  };
+
+  // Funciones globales para mascotas
+  window.editarMascota = (documentId) => {
+    const mascota = mascotasData.find(m => m.documentId === documentId);
+    if (!mascota) {
+      alert('❌ No se encontró la mascota');
+      return;
+    }
+
+    console.log('📝 Editando mascota:', mascota);
+
+    // Pre-cargar datos en el formulario
+    document.getElementById('edit-id').value = mascota.documentId;
+    document.getElementById('edit-nombre').value = mascota.nombre || '';
+    document.getElementById('edit-especie').value = mascota.especie || '';
+    document.getElementById('edit-raza').value = mascota.raza || '';
+    document.getElementById('edit-sexo').value = mascota.sexo || '';
+    document.getElementById('edit-fecha-nacimiento').value = mascota.fecha_nacimiento || '';
+
+    window.open_modal_editar_mascota();
+  };
+
+  window.eliminarMascota = async (documentId) => {
+    const mascota = mascotasData.find(m => m.documentId === documentId);
+    const nombreMascota = mascota?.nombre || 'esta mascota';
+
+    if (!confirm(`¿Estás seguro de eliminar a ${nombreMascota}?`)) {
+      return;
+    }
+
+    console.log('🗑️ Eliminando mascota documentId:', documentId);
+
+    try {
+      await pacientesAPI.eliminarPaciente(documentId);
+      await cargarMascotas();
+      alert('✅ Mascota eliminada exitosamente');
+    } catch (error) {
+      console.error('Error eliminando mascota:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
 </script>

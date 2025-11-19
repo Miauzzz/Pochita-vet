@@ -3,6 +3,7 @@
  */
 
 import { factories } from '@strapi/strapi'
+import { notificarRecepcionistas } from '../../../utils/notificaciones';
 
 export default factories.createCoreController('api::disponibilidad.disponibilidad', ({ strapi }) => ({
   /**
@@ -235,6 +236,97 @@ export default factories.createCoreController('api::disponibilidad.disponibilida
     } catch (error) {
       console.error('Error en veterinarios:', error);
       return ctx.internalServerError('Error al obtener veterinarios');
+    }
+  },
+
+  /**
+   * Eliminar disponibilidad - Crea notificación si hay cita asociada
+   * DELETE /api/disponibilidads/:id
+   */
+  async delete(ctx) {
+    try {
+      const { id } = ctx.params;
+      const user = ctx.state.user;
+
+      if (!user) {
+        return ctx.unauthorized('Debes estar autenticado');
+      }
+
+      // Obtener disponibilidad con cita asociada
+      const disponibilidad: any = await strapi.entityService.findOne(
+        'api::disponibilidad.disponibilidad',
+        id,
+        {
+          populate: ['veterinario', 'cita', 'cita.paciente', 'cita.paciente.propietario'],
+        }
+      );
+
+      if (!disponibilidad) {
+        return ctx.notFound('Disponibilidad no encontrada');
+      }
+
+      // Verificar que el veterinario sea el dueño
+      if (disponibilidad.veterinario?.id !== user.id) {
+        return ctx.forbidden('No tienes permiso para eliminar esta disponibilidad');
+      }
+
+      // Si hay cita asociada, cancelarla y notificar
+      if (disponibilidad.cita) {
+        const cita = disponibilidad.cita;
+        const veterinarioNombre = disponibilidad.veterinario.nombreCompleto || disponibilidad.veterinario.username;
+        const fechaFormateada = new Date(disponibilidad.fecha).toLocaleDateString('es-CL');
+        const horaFormateada = disponibilidad.hora_inicio.substring(0, 5);
+
+        // 1. Cancelar la cita automáticamente
+        await strapi.entityService.update('api::cita.cita', cita.id, {
+          data: { estado: 'cancelada' },
+        });
+
+        console.log(`🚫 Cita ${cita.id} cancelada automáticamente por eliminación de disponibilidad`);
+
+        // 2. Notificar a recepcionistas
+        const tituloRecep = 'Veterinario canceló disponibilidad';
+        const mensajeRecep = `Dr. ${veterinarioNombre} canceló disponibilidad el ${fechaFormateada} a las ${horaFormateada}. Cita de ${cita.paciente?.nombre || 'mascota'} fue cancelada automáticamente.`;
+
+        await notificarRecepcionistas(
+          strapi,
+          'cancelacion',
+          tituloRecep,
+          mensajeRecep,
+          user.id,
+          cita.id
+        );
+
+        console.log(`📢 Notificación enviada a recepcionistas`);
+
+        // 3. Notificar al cliente (propietario del paciente)
+        if (cita.paciente?.propietario?.id) {
+          const { crearNotificacion } = await import('../../../utils/notificaciones');
+          
+          const tituloCliente = 'Cita cancelada';
+          const mensajeCliente = `Tu cita del ${fechaFormateada} a las ${horaFormateada} con Dr. ${veterinarioNombre} para ${cita.paciente.nombre} ha sido cancelada. Por favor, agenda una nueva cita.`;
+
+          await crearNotificacion(
+            strapi,
+            'cancelacion',
+            tituloCliente,
+            mensajeCliente,
+            cita.paciente.propietario.id,
+            user.id,
+            cita.id
+          );
+
+          console.log(`📢 Notificación enviada al cliente (Usuario ${cita.paciente.propietario.id})`);
+        }
+      }
+
+      // Eliminar disponibilidad
+      const deleted = await strapi.entityService.delete('api::disponibilidad.disponibilidad', id);
+
+      return { data: deleted };
+    } catch (error) {
+      console.error('❌ Error eliminando disponibilidad:', error);
+      ctx.throw(500, error.message);
     }
   },
 }));
