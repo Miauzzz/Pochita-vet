@@ -3,8 +3,8 @@
 ---
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
 <header>
-    <nav x-data="{ open: false }" class="bg-stone-600 border-black border-b-2 border-r text-white h-[60px] w-full p-5 
-                flex items-center justify-end relative rounded-none mx-auto 
+    <nav x-data="{ open: false, accountOpen: false }" class="sticky top-0 z-50 bg-stone-600 border-black border-b-2 border-r text-white h-[60px] w-full p-5 
+                flex items-center justify-end rounded-none mx-auto 
                 lg:w-[70%] lg:rounded-lg lg:mt-4">
         <img src="/logoDashboard.webp" alt="Logo" class="absolute
             h-20 top-1 left-2
@@ -15,13 +15,16 @@
             h-20 top-0 left-23
             md:h-25 md:top-0 md:left-30
             lg:h-25 lg:top-1 lg:left-30 z-99 ">
-            <p class="font-black">Panel de <span id="navbar-rol"></span></p>
-            <p class="font-light">Hola, <span class="text-amber-500 font-medium" id="navbar-nombre"></span></p>
+            <p class="font-medium">Panel de <span id="navbar-rol">-</span> 
+                <span id="navbar-email-mobile" class="font-normal text-sm lg:hidden text-gray-300"></span> 
+            </p>
+            <p class="font-normal">Hola, <span class="text-amber-500 font-semibold" id="navbar-nombre"></span> - 
+                <span id="navbar-email" class="hidden lg:inline text-sm font-normal text-gray-300"></span>
+            </p>
         </div>
 
         <!-- Menú Hamburguesa (visible en móviles) copiado de la navbar pública -->
         <div class="lg:hidden">
-            <a href="#"><span class="material-symbols-outlined text-primary text-amber-600 h-6 w-6 pr-10">account_circle</span></a>
             <button class="p-2 focus:outline-none relative z-50" type="button"
                 @click="open = !open"
                 aria-label="Abrir menú"
@@ -37,9 +40,23 @@
 
         <!-- Menu desktop -->
         <ul class="hidden lg:flex space-x-4 items-center">
-            <li><a href="#Mascotas">Mis mascotas</a></li>
+            <li><a href="/">Inicio</a></li>
             <li><a href="#Historial">Historial</a></li>
-            <li><a href="#Cuenta"><span class="material-symbols-outlined text-primary text-amber-600" style="font-size: 30px;">account_circle</span></a></li>
+            <li class="relative">
+                <button @click="accountOpen = !accountOpen" class="flex items-center gap-2 focus:outline-none" aria-haspopup="true" aria-expanded="false">
+                    <span class="material-symbols-outlined text-primary text-amber-600" style="font-size: 30px;">account_circle</span>
+                </button>
+
+                <!-- Dropdown escritorio -->
+                <div x-show="accountOpen" x-cloak
+                    @click.outside="accountOpen = false"
+                    @keydown.escape.window="accountOpen = false"
+                    x-transition
+                    class="absolute right-0 mt-2 w-40 bg-white text-black rounded-md shadow-lg z-50 lg:block">
+                    <a class="block px-4 py-2 text-sm hover:bg-gray-100" href="#perfil">Perfil</a>
+                    <a class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100" href="#" data-logout>Cerrar Sesión</a>
+                </div>
+            </li>
         </ul>
 
         <!-- Dropdown menu (versión móvil) copiado de la navbar pública -->
@@ -49,9 +66,10 @@
             x-transition
             class="text-center lg:hidden absolute left-0 top-full w-full bg-white text-black rounded-b-md shadow-lg z-50 origin-top">
             <ul class="py-2">
-                <li><a class="block px-4 py-2 hover:bg-gray-100 w-full" href="#Mascotas">Mis mascotas</a></li>
+                <li><a class="block px-4 py-2 hover:bg-gray-100 w-full" href="/">Inicio</a></li>
                 <li><a class="block px-4 py-2 hover:bg-gray-100 w-full" href="#Historial">Historial</a></li>
-                <li><a class="block px-4 py-2 bg-amber-500 text-white hover:bg-amber-600" href="/" id="logout">Cerrar Sesión</a></li>
+                <li><a class="block px-4 py-2 hover:bg-gray-100 w-full" href="#perfil">Perfil</a></li>
+                <li><a class="block px-4 py-2 bg-amber-500 text-white hover:bg-amber-600" href="#" data-logout>Cerrar Sesión</a></li>
             </ul>
         </div>
     </nav>
@@ -64,13 +82,13 @@
 <script type="module">
   import { logout, loadSession } from '/src/lib/authHelpers.js';
   
-  const logoutEl = document.getElementById('logout');
-  if (logoutEl) {
-    logoutEl.addEventListener('click', (e) => {
-      e.preventDefault();
-      logout('/login');
+    // Attach logout handlers (supports mobile and desktop logout links via data-logout)
+    document.querySelectorAll('[data-logout]').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout('/login');
+        });
     });
-  }
   
   // Actualizar navbar con datos de sesión
   const session = loadSession();
@@ -81,8 +99,13 @@
     document.getElementById('navbar-rol').textContent = rolCapitalizado;
     
     // Obtener nombre y email
-    const nombre = session.appUser.usuario?.nombre || session.appUser.profile?.username || 'Usuario';
-    const email = session.appUser.profile?.email || '';
-    document.getElementById('navbar-nombre').textContent = `${nombre} (${email})`;
+          const nombre = session.appUser.usuario?.nombre || session.appUser.profile?.username || 'Usuario';
+          const email = session.appUser.profile?.email || '';
+          const nombreEl = document.getElementById('navbar-nombre');
+          const emailEl = document.getElementById('navbar-email');
+          const emailMobileEl = document.getElementById('navbar-email-mobile');
+          if (nombreEl) nombreEl.textContent = nombre;
+          if (emailEl) emailEl.textContent = email ? `(${email})` : '';
+          if (emailMobileEl) emailMobileEl.textContent = email ? `(${email})` : '';
   }
 </script>

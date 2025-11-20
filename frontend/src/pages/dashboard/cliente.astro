@@ -208,8 +208,8 @@ import Loading from '../../components/ui/Loading.astro';
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
-          <Select name="sexo">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sexo *</label>
+          <Select name="sexo" required>
             <option value="">Selecciona</option>
             <option value="Macho">Macho</option>
             <option value="Hembra">Hembra</option>
@@ -218,8 +218,20 @@ import Loading from '../../components/ui/Loading.astro';
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento</label>
-          <Input type="date" name="fecha_nacimiento" />
+          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento *</label>
+          <Input type="date" name="fecha_nacimiento" required />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+          <Input type="text" name="color" placeholder="Ej: Café, Negro" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+          <Input type="text" name="peso" placeholder="Ej: 15.5" />
         </div>
       </div>
 
@@ -267,8 +279,8 @@ import Loading from '../../components/ui/Loading.astro';
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
-          <Select name="sexo" id="edit-sexo">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sexo *</label>
+          <Select name="sexo" id="edit-sexo" required>
             <option value="">Selecciona</option>
             <option value="Macho">Macho</option>
             <option value="Hembra">Hembra</option>
@@ -277,8 +289,20 @@ import Loading from '../../components/ui/Loading.astro';
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento</label>
-          <Input type="date" name="fecha_nacimiento" id="edit-fecha-nacimiento" />
+          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento *</label>
+          <Input type="date" name="fecha_nacimiento" id="edit-fecha-nacimiento" required />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+          <Input type="text" name="color" id="edit-color" placeholder="Ej: Café, Negro" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+          <Input type="text" name="peso" id="edit-peso" placeholder="Ej: 15.5" />
         </div>
       </div>
 
@@ -464,6 +488,8 @@ import Loading from '../../components/ui/Loading.astro';
         </div>
         ${m.sexo ? `<p class="text-xs text-gray-500">Sexo: ${m.sexo}</p>` : ''}
         ${m.fecha_nacimiento ? `<p class="text-xs text-gray-500">Nació: ${formatearFecha(m.fecha_nacimiento)}</p>` : ''}
+        ${m.color ? `<p class="text-xs text-gray-500">Color: ${m.color}</p>` : ''}
+        ${m.peso ? `<p class="text-xs text-gray-500">Peso: ${m.peso} kg</p>` : ''}
       </div>
     `).join('');
   }
@@ -976,6 +1002,8 @@ import Loading from '../../components/ui/Loading.astro';
     document.getElementById('edit-raza').value = mascota.raza || '';
     document.getElementById('edit-sexo').value = mascota.sexo || '';
     document.getElementById('edit-fecha-nacimiento').value = mascota.fecha_nacimiento || '';
+    document.getElementById('edit-color').value = mascota.color || '';
+    document.getElementById('edit-peso').value = mascota.peso || '';
 
     window.open_modal_editar_mascota();
   };
