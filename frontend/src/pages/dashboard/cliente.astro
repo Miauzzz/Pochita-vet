@@ -326,12 +326,32 @@ import Loading from '../../components/ui/Loading.astro';
 
 </BaseDashboard>
 
+<!-- Este Script es para manejar la lógica del dashboard del cliente -->
 <script>
   import { loadSession } from '../../lib/authHelpers.js';
   import { PacientesAPI } from '../../lib/api/pacientes.js';
   import { CitasAPI } from '../../lib/api/citas.js';
   import { DisponibilidadesAPI } from '../../lib/api/disponibilidades.js';
   import { NotificacionesAPI } from '../../lib/api/notificaciones.js';
+
+  declare global {
+    interface Window {
+      abrirSelectorDisponibilidad: () => Promise<void>;
+      seleccionarDisponibilidad: (index: number) => void;
+      cancelarCita: (documentId: string) => Promise<void>;
+      marcarNotificacionLeida: (notificacionId: number) => Promise<void>;
+      scrollYMarcarLeida: (notificacionId: number, citaId: number) => Promise<void>;
+      editarMascota: (documentId: string) => void;
+      eliminarMascota: (documentId: string) => Promise<void>;
+      open_modal_nueva_mascota: () => void;
+      close_modal_nueva_mascota: () => void;
+      open_modal_editar_mascota: () => void;
+      close_modal_editar_mascota: () => void;
+      open_modal_disponibilidad: () => void;
+      close_modal_disponibilidad: () => void;
+      disponibilidadesActuales: any[];
+    }
+  }
 
   let session, pacientesAPI, citasAPI, disponibilidadesAPI, notificacionesAPI;
   let mascotasData = [];
@@ -341,7 +361,7 @@ import Loading from '../../components/ui/Loading.astro';
 
   // Inicializar
   document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Dashboard cliente iniciando...');
+    console.log('Dashboard cliente iniciando...');
     
     // Verificar autenticación y rol ANTES de cargar datos
     const { requireRole } = await import('../../lib/authHelpers.js');
@@ -349,12 +369,12 @@ import Loading from '../../components/ui/Loading.astro';
     
     session = loadSession();
     if (!session?.jwt) {
-      console.error('❌ No hay sesión, redirigiendo a login');
+      console.error('No hay sesión, redirigiendo a login');
       window.location.href = '/login';
       return;
     }
 
-    console.log('✅ Sesión cargada:', session.appUser.profile.email);
+    console.log('Sesión cargada:', session.appUser.profile.email);
 
     pacientesAPI = new PacientesAPI(session.jwt);
     citasAPI = new CitasAPI(session.jwt);
@@ -365,7 +385,7 @@ import Loading from '../../components/ui/Loading.astro';
     document.getElementById('user-info').textContent = session.appUser.profile.email;
 
     // Cargar datos
-    console.log('📥 Cargando datos iniciales...');
+    console.log('Cargando datos iniciales...');
     await Promise.all([
       cargarMascotas(),
       cargarCitas(),
@@ -378,19 +398,19 @@ import Loading from '../../components/ui/Loading.astro';
     
     // Recargar cada 10s para actualizaciones en tiempo real
     setInterval(async () => {
-      console.log('🔄 Actualizando datos automáticamente...');
+      console.log('Actualizando datos automáticamente...');
       await Promise.all([cargarMascotasSinResetear(), cargarCitas(), cargarNotificaciones()]);
     }, 10000);
 
     // Escuchar cambios de visibilidad de la página
     document.addEventListener('visibilitychange', async () => {
       if (!document.hidden) {
-        console.log('👁️ Página visible - actualizando datos...');
+        console.log('Página visible - actualizando datos...');
         await Promise.all([cargarMascotasSinResetear(), cargarCitas(), cargarNotificaciones()]);
       }
     });
     
-    console.log('✅ Dashboard cliente listo');
+    console.log('Dashboard cliente listo');
   });
 
   async function cargarMascotas() {
@@ -418,7 +438,7 @@ import Loading from '../../components/ui/Loading.astro';
   async function cargarMascotasSinResetear() {
     // Cargar mascotas sin actualizar el select (para auto-reload)
     try {
-      const selectMascota = document.getElementById('select-mascota');
+      const selectMascota = document.getElementById('select-mascota') as HTMLSelectElement;
       const valorActual = selectMascota?.value;
       
       mascotasData = await pacientesAPI.getMisPacientes();
@@ -522,7 +542,7 @@ import Loading from '../../components/ui/Loading.astro';
     citasFiltradas = citasFiltradas.sort((a, b) => {
       const fechaA = new Date(a.fecha + 'T' + (a.hora || '00:00:00'));
       const fechaB = new Date(b.fecha + 'T' + (b.hora || '00:00:00'));
-      return fechaA - fechaB;
+      return fechaA.getTime() - fechaB.getTime();
     });
 
     if (citasFiltradas.length === 0) {
@@ -630,14 +650,16 @@ import Loading from '../../components/ui/Loading.astro';
   function actualizarBadgeNotificaciones() {
     const noLeidas = notificacionesData.filter(n => !n.leida).length;
     const badge = document.getElementById('badge-notificaciones');
-    badge.textContent = noLeidas;
-    badge.style.display = noLeidas > 0 ? 'inline-block' : 'none';
+    if (badge) {
+      badge.textContent = noLeidas.toString();
+      badge.style.display = noLeidas > 0 ? 'inline-block' : 'none';
+    }
   }
 
   function formatearFechaNotificacion(fecha) {
     const ahora = new Date();
     const fechaNot = new Date(fecha);
-    const diff = ahora - fechaNot;
+    const diff = ahora.getTime() - fechaNot.getTime();
     const minutos = Math.floor(diff / 60000);
     const horas = Math.floor(minutos / 60);
     const dias = Math.floor(horas / 24);
@@ -663,12 +685,13 @@ import Loading from '../../components/ui/Loading.astro';
   }
 
   function setupEventos() {
-    console.log('⚙️ Configurando event listeners...');
+    console.log('Configurando event listeners...');
     
     // Form nueva mascota
     document.getElementById('form-nueva-mascota').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
       const datos = Object.fromEntries(formData);
 
       console.log('Creando mascota con datos:', datos);
@@ -676,19 +699,20 @@ import Loading from '../../components/ui/Loading.astro';
       try {
         await pacientesAPI.crearPaciente(datos);
         window.close_modal_nueva_mascota();
-        e.target.reset();
+        form.reset();
         await cargarMascotas();
-        alert('✅ Mascota registrada exitosamente');
+        alert('Mascota registrada exitosamente');
       } catch (error) {
-        alert('❌ Error: ' + error.message);
+        alert('Error: ' + error.message);
       }
     });
 
     // Form editar mascota
     document.getElementById('form-editar-mascota').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      const documentId = formData.get('id');
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+      const documentId = formData.get('id') as string;
       const datos = Object.fromEntries(formData);
       delete datos.id; // No enviar el ID en el body
 
@@ -698,18 +722,20 @@ import Loading from '../../components/ui/Loading.astro';
         await pacientesAPI.actualizarPaciente(documentId, datos);
         window.close_modal_editar_mascota();
         await cargarMascotas();
-        alert('✅ Mascota actualizada exitosamente');
+        alert('Mascota actualizada exitosamente');
       } catch (error) {
-        alert('❌ Error: ' + error.message);
+        alert('Error: ' + error.message);
       }
     });
 
     // Form solicitar cita
     document.getElementById('form-solicitar-cita').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
       
-      const disponibilidadId = document.getElementById('disponibilidad-seleccionada').value;
+      const disponibilidadInput = document.getElementById('disponibilidad-seleccionada') as HTMLInputElement;
+      const disponibilidadId = disponibilidadInput.value;
       if (!disponibilidadId) {
         alert('Selecciona una fecha y hora disponible');
         return;
@@ -718,8 +744,8 @@ import Loading from '../../components/ui/Loading.astro';
       const disponibilidad = JSON.parse(disponibilidadId);
       
       console.log('Solicitando cita con datos:', {
-        pacienteId: parseInt(formData.get('mascota')),
-        veterinarioId: parseInt(formData.get('veterinario')),
+        pacienteId: parseInt(formData.get('mascota') as string),
+        veterinarioId: parseInt(formData.get('veterinario') as string),
         fecha: disponibilidad.fecha,
         hora: disponibilidad.hora_inicio,
         motivo: formData.get('motivo') || '',
@@ -728,28 +754,29 @@ import Loading from '../../components/ui/Loading.astro';
       
       try {
         await citasAPI.solicitarCita({
-          pacienteId: parseInt(formData.get('mascota')),
-          veterinarioId: parseInt(formData.get('veterinario')),
+          pacienteId: parseInt(formData.get('mascota') as string),
+          veterinarioId: parseInt(formData.get('veterinario') as string),
           fecha: disponibilidad.fecha,
           hora: disponibilidad.hora_inicio,
           motivo: formData.get('motivo') || '',
           disponibilidadId: disponibilidad.id
         });
 
-        e.target.reset();
-        document.getElementById('disponibilidad-seleccionada').value = '';
+        form.reset();
+        disponibilidadInput.value = '';
         document.getElementById('disponibilidad-texto').textContent = 'No has seleccionado horario';
         await cargarCitas();
-        alert('✅ Cita solicitada exitosamente');
+        alert('Cita solicitada exitosamente');
       } catch (error) {
-        alert('❌ Error: ' + error.message);
+        alert('Error: ' + error.message);
       }
     });
 
     // Filtros de citas
     document.querySelectorAll('[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
-        console.log('🔘 Filtro clickeado:', btn.dataset.filter);
+        const button = btn as HTMLElement;
+        console.log('🔘 Filtro clickeado:', button.dataset.filter);
         
         // Remover estilo activo de todos los botones
         document.querySelectorAll('[data-filter]').forEach(b => {
@@ -758,11 +785,11 @@ import Loading from '../../components/ui/Loading.astro';
         });
         
         // Aplicar estilo activo al botón clickeado
-        btn.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
-        btn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        button.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+        button.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
         
-        filtroActual = btn.dataset.filter;
-        console.log('🛠️ Filtro aplicado:', filtroActual);
+        filtroActual = button.dataset.filter;
+        console.log('Filtro aplicado:', filtroActual);
         renderCitas();
       });
     });
@@ -779,13 +806,14 @@ import Loading from '../../components/ui/Loading.astro';
   }
 
   window.abrirSelectorDisponibilidad = async () => {
-    const veterinarioId = document.getElementById('select-veterinario').value;
+    const selectVeterinario = document.getElementById('select-veterinario') as HTMLSelectElement;
+    const veterinarioId = selectVeterinario.value;
     if (!veterinarioId) {
       alert('Selecciona un veterinario primero');
       return;
     }
 
-    console.log('🔍 Ver disponibilidad para veterinario:', veterinarioId);
+    console.log('Ver disponibilidad para veterinario:', veterinarioId);
 
     window.open_modal_disponibilidad();
     document.getElementById('disponibilidad-content').innerHTML = '<div class="flex justify-center py-8"><div class="text-sm text-gray-600">Cargando disponibilidad...</div></div>';
@@ -805,7 +833,7 @@ import Loading from '../../components/ui/Loading.astro';
         });
       }
       
-      console.log('📅 Buscando disponibilidades en:', mesesBuscar);
+      console.log('Buscando disponibilidades en:', mesesBuscar);
       
       const todasDisponibilidades = [];
       for (const periodo of mesesBuscar) {
@@ -817,7 +845,7 @@ import Loading from '../../components/ui/Loading.astro';
         todasDisponibilidades.push(...disps);
       }
       
-      console.log('✅ Disponibilidades obtenidas:', todasDisponibilidades);
+      console.log('Disponibilidades obtenidas:', todasDisponibilidades);
       
       // Filtrar solo disponibilidades futuras (fecha y hora)
       const ahora = new Date();
@@ -830,7 +858,7 @@ import Loading from '../../components/ui/Loading.astro';
       
       mostrarDisponibilidades(disponibilidadesFuturas);
     } catch (error) {
-      console.error('❌ Error cargando disponibilidades:', error);
+      console.error('Error cargando disponibilidades:', error);
       document.getElementById('disponibilidad-content').innerHTML = `
         <div class="text-center text-red-600 text-sm">${error.message}</div>
       `;
@@ -874,7 +902,8 @@ import Loading from '../../components/ui/Loading.astro';
 
   window.seleccionarDisponibilidad = (index) => {
     const disp = window.disponibilidadesActuales[index];
-    document.getElementById('disponibilidad-seleccionada').value = JSON.stringify(disp);
+    const input = document.getElementById('disponibilidad-seleccionada') as HTMLInputElement;
+    input.value = JSON.stringify(disp);
     document.getElementById('disponibilidad-texto').textContent = 
       `${formatearFecha(disp.fecha)} a las ${disp.hora_inicio.substring(0, 5)}`;
     window.close_modal_disponibilidad();
@@ -886,10 +915,10 @@ import Loading from '../../components/ui/Loading.astro';
     try {
       await citasAPI.cancelarCita(documentId);
       await cargarCitas();
-      alert('✅ Cita cancelada');
+      alert('Cita cancelada');
     } catch (error) {
       console.error('Error cancelando cita:', error);
-      alert('❌ Error: ' + error.message);
+      alert('Error: ' + error.message);
     }
   };
 
@@ -936,24 +965,24 @@ import Loading from '../../components/ui/Loading.astro';
       console.error('Error marcando notificación:', error);
     }
 
-    console.log('📊 [CLIENTE] citasData disponible:', citasData);
+    console.log('[CLIENTE] citasData disponible:', citasData);
     
     // Buscar la cita por ID en el array de datos
     const cita = citasData.find(c => c.id === citaId);
-    console.log('🔍 [CLIENTE] Cita encontrada:', cita);
+    console.log('[CLIENTE] Cita encontrada:', cita);
     
     if (!cita) {
-      console.log('❌ [CLIENTE] Cita no encontrada en los datos actuales');
+      console.log('[CLIENTE] Cita no encontrada en los datos actuales');
       return;
     }
 
     // Buscar el elemento en el DOM por data-cita-id
     setTimeout(() => {
       const citaElemento = document.querySelector(`[data-cita-id="${citaId}"]`);
-      console.log('🎨 [CLIENTE] Elemento DOM encontrado:', citaElemento);
+      console.log('[CLIENTE] Elemento DOM encontrado:', citaElemento);
       
       if (citaElemento) {
-        console.log('✅ [CLIENTE] Haciendo scroll al elemento');
+        console.log('[CLIENTE] Haciendo scroll al elemento');
         citaElemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Destacar brevemente la cita
         citaElemento.classList.add('ring-4', 'ring-orange-300', 'ring-offset-2');
@@ -961,16 +990,16 @@ import Loading from '../../components/ui/Loading.astro';
           citaElemento.classList.remove('ring-4', 'ring-orange-300', 'ring-offset-2');
         }, 2500);
       } else {
-        console.log('⚠️ [CLIENTE] Elemento no visible, intentando cambiar filtro');
+        console.log('[CLIENTE] Elemento no visible, intentando cambiar filtro');
         // Si no está visible, cambiar filtro para mostrarla
         const filtroBtn = document.querySelector(`[data-filter="${cita.estado}"]`);
-        console.log('🔘 [CLIENTE] Botón filtro encontrado:', filtroBtn, 'para estado:', cita.estado);
+        console.log('[CLIENTE] Botón filtro encontrado:', filtroBtn, 'para estado:', cita.estado);
         
         if (filtroBtn) {
-          filtroBtn.click();
+          (filtroBtn as HTMLElement).click();
           setTimeout(() => {
             const elem = document.querySelector(`[data-cita-id="${citaId}"]`);
-            console.log('🔄 [CLIENTE] Elemento después de cambiar filtro:', elem);
+            console.log('[CLIENTE] Elemento después de cambiar filtro:', elem);
             
             if (elem) {
               elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -989,21 +1018,21 @@ import Loading from '../../components/ui/Loading.astro';
   window.editarMascota = (documentId) => {
     const mascota = mascotasData.find(m => m.documentId === documentId);
     if (!mascota) {
-      alert('❌ No se encontró la mascota');
+      alert('No se encontró la mascota');
       return;
     }
 
-    console.log('📝 Editando mascota:', mascota);
+    console.log('Editando mascota:', mascota);
 
     // Pre-cargar datos en el formulario
-    document.getElementById('edit-id').value = mascota.documentId;
-    document.getElementById('edit-nombre').value = mascota.nombre || '';
-    document.getElementById('edit-especie').value = mascota.especie || '';
-    document.getElementById('edit-raza').value = mascota.raza || '';
-    document.getElementById('edit-sexo').value = mascota.sexo || '';
-    document.getElementById('edit-fecha-nacimiento').value = mascota.fecha_nacimiento || '';
-    document.getElementById('edit-color').value = mascota.color || '';
-    document.getElementById('edit-peso').value = mascota.peso || '';
+    (document.getElementById('edit-id') as HTMLInputElement).value = mascota.documentId;
+    (document.getElementById('edit-nombre') as HTMLInputElement).value = mascota.nombre || '';
+    (document.getElementById('edit-especie') as HTMLSelectElement).value = mascota.especie || '';
+    (document.getElementById('edit-raza') as HTMLInputElement).value = mascota.raza || '';
+    (document.getElementById('edit-sexo') as HTMLSelectElement).value = mascota.sexo || '';
+    (document.getElementById('edit-fecha-nacimiento') as HTMLInputElement).value = mascota.fecha_nacimiento || '';
+    (document.getElementById('edit-color') as HTMLInputElement).value = mascota.color || '';
+    (document.getElementById('edit-peso') as HTMLInputElement).value = mascota.peso || '';
 
     window.open_modal_editar_mascota();
   };
@@ -1016,15 +1045,15 @@ import Loading from '../../components/ui/Loading.astro';
       return;
     }
 
-    console.log('🗑️ Eliminando mascota documentId:', documentId);
+    console.log('Eliminando mascota documentId:', documentId);
 
     try {
       await pacientesAPI.eliminarPaciente(documentId);
       await cargarMascotas();
-      alert('✅ Mascota eliminada exitosamente');
+      alert('Mascota eliminada exitosamente');
     } catch (error) {
       console.error('Error eliminando mascota:', error);
-      alert('❌ Error: ' + error.message);
+      alert('Error: ' + error.message);
     }
   };
 </script>
