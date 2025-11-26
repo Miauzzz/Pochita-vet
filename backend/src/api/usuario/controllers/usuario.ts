@@ -36,7 +36,7 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
     try {
       // 1. Buscar el usuario en users-permissions por email y resetPasswordToken
       const user = await strapi.query('plugin::users-permissions.user').findOne({
-        where: { 
+        where: {
           email: email.toLowerCase(),
           resetPasswordToken: token,
         },
@@ -44,7 +44,7 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
       });
 
       console.log('Usuario encontrado:', user ? `ID ${user.id}` : 'No encontrado');
-      
+
       if (user) {
         console.log('Detalles del usuario:', {
           id: user.id,
@@ -80,22 +80,22 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
 
       if (!usuario) {
         console.log('Creando registro en collection usuarios...');
-        
+
         // Determinar tipo de usuario basado en el rol
         let tipoUsuario = 'cliente';
         console.log('Rol del user:', user.role);
-        
+
         if (user.role) {
           // El rol ya viene populado
           const roleName = typeof user.role === 'object' ? user.role.name : null;
           console.log('Nombre del rol:', roleName);
-          
+
           if (roleName === 'Veterinario') tipoUsuario = 'veterinario';
           else if (roleName === 'Recepcionista') tipoUsuario = 'recepcionista';
         }
-        
+
         console.log('Tipo de usuario determinado:', tipoUsuario);
-        
+
         // Crear el registro en "usuarios"
         usuario = await strapi.query('api::usuario.usuario').create({
           data: {
@@ -112,19 +112,19 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
         console.log('Registro creado en usuarios:', usuario.id, usuario);
       } else {
         console.log('Actualizando registro existente en usuarios:', usuario.id);
-        
+
         // Determinar tipo de usuario basado en el rol
         let tipoUsuario = 'cliente';
         if (user.role) {
           const roleName = typeof user.role === 'object' ? user.role.name : null;
           console.log('Nombre del rol:', roleName);
-          
+
           if (roleName === 'Veterinario') tipoUsuario = 'veterinario';
           else if (roleName === 'Recepcionista') tipoUsuario = 'recepcionista';
         }
-        
+
         console.log('Tipo de usuario determinado:', tipoUsuario);
-        
+
         // Actualizar nombre Y tipo_usuario en el registro existente
         usuario = await strapi.query('api::usuario.usuario').update({
           where: { id: usuario.id },
@@ -134,7 +134,7 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
             tipo_usuario: tipoUsuario, // IMPORTANTE: actualizar tipo_usuario también
           },
         });
-        
+
         console.log('Usuario actualizado:', usuario);
       }
 
@@ -173,4 +173,85 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
       return ctx.internalServerError('Error al activar la cuenta');
     }
   },
+
+  /**
+   * Crear cliente presencial (desde Recepción)
+   * POST /api/usuarios/crear-cliente-presencial
+   */
+  async crearClientePresencial(ctx) {
+    const { nombre, correo, telefono } = ctx.request.body;
+
+    console.log('\n=== Creando Cliente Presencial ===');
+    console.log('Datos:', { nombre, correo });
+
+    if (!nombre || !correo) {
+      return ctx.badRequest('Nombre y correo son requeridos');
+    }
+
+    try {
+      // 1. Verificar si el correo ya existe
+      const existingUser = await strapi.query('plugin::users-permissions.user').findOne({
+        where: { email: correo.toLowerCase() }
+      });
+
+      if (existingUser) {
+        return ctx.badRequest('El correo ya está registrado');
+      }
+
+      // 2. Obtener rol "Authenticated" (Cliente)
+      const role = await strapi.query('plugin::users-permissions.role').findOne({
+        where: { type: 'authenticated' }
+      });
+
+      if (!role) {
+        throw new Error('No se encontró el rol Authenticated');
+      }
+
+      // 3. Generar token y password temporal
+      const token = crypto.randomBytes(32).toString('hex');
+      const randomPassword = crypto.randomBytes(10).toString('hex');
+
+      // 4. Crear User en users-permissions
+      const newUser = await strapi.plugin('users-permissions').service('user').add({
+        username: correo.split('@')[0] + '_' + Math.floor(Math.random() * 1000),
+        email: correo.toLowerCase(),
+        password: randomPassword,
+        role: role.id,
+        confirmed: true,
+        blocked: false,
+        resetPasswordToken: token, // Guardamos el token para la activación
+        provider: 'local'
+      });
+
+      // 5. Crear Usuario en collection
+      const nuevoUsuario = await strapi.query('api::usuario.usuario').create({
+        data: {
+          nombre_usuario: newUser.username,
+          nombre: nombre,
+          correo: correo.toLowerCase(),
+          telefono: telefono || '',
+          tipo_usuario: 'cliente',
+          fecha_registro: new Date().toISOString(),
+          user: newUser.id
+        }
+      });
+
+      // 6. Generar Link
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4321';
+      const activationLink = `${frontendUrl}/activar-cuenta?token=${token}&email=${encodeURIComponent(correo)}`;
+
+      console.log('✅ Cliente creado exitosamente');
+      console.log('🔗 Link:', activationLink);
+
+      return ctx.send({
+        message: 'Cliente creado exitosamente',
+        usuario: nuevoUsuario,
+        activationLink: activationLink
+      });
+
+    } catch (error) {
+      console.error('Error creando cliente presencial:', error);
+      return ctx.internalServerError('Error al crear el cliente: ' + error.message);
+    }
+  }
 }));

@@ -1,158 +1,676 @@
 ---
-import BaseDashboard from '../../layouts/BaseDashboard.astro';
-import Card from '../../components/ui/Card.astro';
-import Button from '../../components/ui/Button.astro';
-import Badge from '../../components/ui/Badge.astro';
-import Loading from '../../components/ui/Loading.astro';
-import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/CalendarioDisponibilidad.astro';
+import BaseDashboard from "../../layouts/BaseDashboard.astro";
+import Card from "../../components/ui/Card.astro";
+import Button from "../../components/ui/Button.astro";
+import Badge from "../../components/ui/Badge.astro";
+import Loading from "../../components/ui/Loading.astro";
+import CalendarioDisponibilidad from "../../components/dashboard/recepcionista/CalendarioDisponibilidad.astro";
+import Modal from "../../components/ui/Modal.astro";
+import Input from "../../components/ui/Input.astro";
+import Select from "../../components/ui/Select.astro";
 ---
 
 <!-- Script de verificación ANTES de renderizar contenido -->
+<script define:vars={{ strapiUrl: import.meta.env.PUBLIC_STRAPI_URL }}>
+  window.STRAPI_URL = strapiUrl;
+</script>
 <script is:inline>
   // Verificar autenticación inmediatamente antes de mostrar la página
-  (function() {
-    const jwt = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-    const appUserStr = localStorage.getItem('appUser') || sessionStorage.getItem('appUser');
-    
+  (function () {
+    const jwt = localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
+    const appUserStr =
+      localStorage.getItem("appUser") || sessionStorage.getItem("appUser");
+
     if (!jwt || !appUserStr) {
-      window.location.replace('/login');
+      window.location.replace("/login");
       return;
     }
-    
+
     try {
       const appUser = JSON.parse(appUserStr);
       const userRole = appUser?.usuario?.tipo_usuario?.toLowerCase();
-      
+
       // Verificar que sea recepcionista
-      if (userRole !== 'recepcionista') {
+      if (userRole !== "recepcionista") {
         window.location.replace(`/dashboard/${userRole}`);
         return;
       }
     } catch (error) {
-      console.error('Error verificando sesión:', error);
+      console.error("Error verificando sesión:", error);
       localStorage.clear();
       sessionStorage.clear();
-      window.location.replace('/login');
+      window.location.replace("/login");
     }
   })();
 </script>
 
 <BaseDashboard>
-
-    <div class="flex flex-col lg:flex-row gap-4 mt-10">
-      
-      <!-- Panel Principal: Calendario + Gestión de Citas -->
-      <div class="flex-1 space-y-4">
-        
-        <!-- Sección Calendario de Disponibilidad -->
-        <Card padding="md">
-          <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-900">Agendar Cita</h2>
-          </div>
-          <CalendarioDisponibilidad />
-        </Card>
-
-        <!-- Sección Gestión de Citas -->
-        <Card padding="md">
-          <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-900">Gestión de Citas</h2>
-          </div>
-
-          <!-- Filtros -->
-          <div class="flex gap-2 flex-wrap mb-4">
-            <button data-filter="todas" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600">
-              Todas
-            </button>
-            <button data-filter="pendiente" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
-              Pendientes
-            </button>
-            <button data-filter="confirmada" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
-              Confirmadas
-            </button>
-            <button data-filter="cancelada" class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
-              Canceladas
-            </button>
-          </div>
-
-          <!-- Lista de Citas -->
-          <div id="citas-container" class="space-y-3">
-            <Loading size="sm" text="Cargando citas..." />
-          </div>
-        </Card>
-      </div>
-
-      <!-- Panel Lateral: Notificaciones -->
-      <aside class="w-full lg:w-80 shrink-0 order-first lg:order-last">
-        
-        <!-- Notificaciones del Sistema -->
-        <Card padding="sm" class="sticky top-4">
-          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-            <h2 class="text-sm font-bold text-gray-900">Notificaciones</h2>
-            <span id="badge-notificaciones" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
-          </div>
-          
-          <div id="notificaciones-sistema-container" class="space-y-2 max-h-[200px] overflow-y-auto">
-            <Loading size="sm" />
-          </div>
-
-          <button 
-            id="btn-marcar-leidas"
-            class="w-full mt-3 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors"
-            style="display: none;"
+  <div class="flex flex-col lg:flex-row gap-4 mt-10">
+    <!-- Panel Principal: Calendario + Gestión de Citas -->
+    <div class="flex-1 space-y-4">
+      <!-- Sección Calendario de Disponibilidad -->
+      <Card padding="md">
+        <div
+          class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200"
+          x-data
+        >
+          <h2 class="text-lg font-bold text-gray-900">Agendar Cita</h2>
+          <button
+            @click="$dispatch('open-new-client-modal')"
+            class="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
           >
-            Marcar todas como leídas
+            <span class="text-lg leading-none">+</span> Nuevo Cliente
           </button>
-        </Card>
-        
-      </aside>
+          <button
+            @click="$dispatch('open-search-client-modal')"
+            class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1 ml-2"
+          >
+            <span class="text-lg leading-none">+</span> Registrar Mascota
+          </button>
+        </div>
+        <CalendarioDisponibilidad />
+      </Card>
 
+      <!-- Sección Gestión de Citas -->
+      <Card padding="md">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+          <h2 class="text-lg font-bold text-gray-900">Gestión de Citas</h2>
+        </div>
+
+        <!-- Filtros -->
+        <div class="flex gap-2 flex-wrap mb-4">
+          <button
+            data-filter="todas"
+            class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600"
+          >
+            Todas
+          </button>
+          <button
+            data-filter="pendiente"
+            class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Pendientes
+          </button>
+          <button
+            data-filter="confirmada"
+            class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Confirmadas
+          </button>
+          <button
+            data-filter="cancelada"
+            class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Canceladas
+          </button>
+        </div>
+
+        <!-- Lista de Citas -->
+        <div id="citas-container" class="space-y-3">
+          <Loading size="sm" text="Cargando citas..." />
+        </div>
+      </Card>
+    </div>
+
+    <!-- Panel Lateral: Notificaciones -->
+    <aside class="w-full lg:w-80 shrink-0 order-first lg:order-last">
+      <!-- Notificaciones del Sistema -->
+      <Card padding="sm" class="sticky top-4">
+        <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+          <h2 class="text-sm font-bold text-gray-900">Notificaciones</h2>
+          <span
+            id="badge-notificaciones"
+            class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+            >0</span
+          >
+        </div>
+
+        <div
+          id="notificaciones-sistema-container"
+          class="space-y-2 max-h-[200px] overflow-y-auto"
+        >
+          <Loading size="sm" />
+        </div>
+
+        <button
+          id="btn-marcar-leidas"
+          class="w-full mt-3 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors"
+          style="display: none;"
+        >
+          Marcar todas como leídas
+        </button>
+      </Card>
+    </aside>
+  </div>
+
+  <!-- AlpineJS Component for Client Registration -->
+  <div x-data="clientRegistration()" @open-new-client-modal.window="openForm()">
+    <!-- Modal Nuevo Cliente -->
+    <div
+      x-show="showForm"
+      x-cloak
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        @click.outside="closeForm()"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+        x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+      >
+        <!-- Header -->
+        <div
+          class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10"
+        >
+          <h3 class="text-lg font-semibold text-gray-900">
+            Registrar Nuevo Cliente y Paciente
+          </h3>
+          <button
+            @click="closeForm()"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"></path></svg
+            >
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="px-6 py-4">
+          <form @submit.prevent="submitForm" class="space-y-6">
+            <!-- Paso 1: Datos del Cliente -->
+            <div class="space-y-4">
+              <h4 class="text-sm font-bold text-gray-900 border-b pb-1">
+                1. Datos del Propietario
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Nombre Completo <span class="text-red-500">*</span></label
+                  >
+                  <input
+                    x-model="form.nombre"
+                    type="text"
+                    required
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Ej: Juan Pérez"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Correo Electrónico <span class="text-red-500">*</span
+                    ></label
+                  >
+                  <input
+                    x-model="form.correo"
+                    type="email"
+                    required
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="juan@ejemplo.com"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Teléfono</label
+                  >
+                  <input
+                    x-model="form.telefono"
+                    type="tel"
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="+56 9 1234 5678"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Paso 2: Datos de la Mascota -->
+            <div class="space-y-4">
+              <h4 class="text-sm font-bold text-gray-900 border-b pb-1">
+                2. Datos de la Mascota
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Nombre Mascota <span class="text-red-500">*</span></label
+                  >
+                  <input
+                    x-model="form.nombre_mascota"
+                    type="text"
+                    required
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Ej: Firulais"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Especie <span class="text-red-500">*</span></label
+                  >
+                  <select
+                    x-model="form.especie"
+                    required
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Perro">Perro</option>
+                    <option value="Gato">Gato</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Raza</label
+                  >
+                  <input
+                    x-model="form.raza"
+                    type="text"
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Ej: Golden Retriever"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Sexo <span class="text-red-500">*</span></label
+                  >
+                  <select
+                    x-model="form.sexo"
+                    required
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Peso (kg)</label
+                  >
+                  <input
+                    x-model="form.peso"
+                    type="number"
+                    step="0.1"
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Ej: 10.5"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Fecha Nacimiento (Aprox)</label
+                  >
+                  <input
+                    x-model="form.fecha_nacimiento"
+                    type="date"
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                @click="closeForm()"
+                class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                :disabled="loading"
+                class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span x-show="loading" class="animate-spin">↻</span>
+                <span x-text="loading ? 'Registrando...' : 'Registrar Cliente'"
+                ></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Link de Activación (Success) -->
+    <div
+      x-show="showSuccess"
+      x-cloak
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+        @click.outside="closeSuccess()"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+        x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+      >
+        <div class="p-6 text-center space-y-4">
+          <div
+            class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce"
+          >
+            ✓
+          </div>
+
+          <h3 class="text-xl font-bold text-gray-900">¡Cliente Registrado!</h3>
+
+          <p class="text-sm text-gray-600">
+            Comparte este enlace con el cliente para que active su cuenta y cree
+            su contraseña:
+          </p>
+
+          <div class="relative group">
+            <div
+              class="bg-gray-50 p-3 rounded-lg border border-gray-200 break-all text-xs font-mono text-gray-700 select-all cursor-pointer hover:bg-gray-100 transition-colors"
+              @click="copyLink()"
+            >
+              <span x-text="activationLink"></span>
+            </div>
+            <!-- Tooltip visual hint -->
+            <div
+              class="absolute inset-x-0 -bottom-6 text-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-gray-400"
+            >
+              Click para copiar
+            </div>
+          </div>
+
+          <button
+            @click="copyLink()"
+            class="w-full py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 relative overflow-hidden"
+            :class="copied ? 'bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200'"
+          >
+            <span x-show="!copied" class="flex items-center gap-2">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                ></path></svg
+              >
+              Copiar Enlace
+            </span>
+            <span x-show="copied" class="flex items-center gap-2" x-transition>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"></path></svg
+              >
+              ¡Copiado!
+            </span>
+          </button>
+
+          <button
+            @click="closeSuccess()"
+            class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm font-medium hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal Buscar Cliente -->
+  <div x-data="clientSearch()" @open-search-client-modal.window="openSearch()">
+    <div
+      x-show="showSearch"
+      x-cloak
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      x-transition
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
+        @click.outside="closeSearch()"
+      >
+        <div class="p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Buscar Cliente</h3>
+
+          <div class="flex gap-2 mb-4">
+            <input
+              type="text"
+              x-model="searchTerm"
+              @keyup.enter="search()"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Nombre o correo..."
+            />
+            <button
+              @click="search()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              :disabled="loading"
+            >
+              <span x-show="!loading">Buscar</span>
+              <span x-show="loading">...</span>
+            </button>
+          </div>
+
+          <!-- Resultados -->
+          <div class="max-h-60 overflow-y-auto space-y-2">
+            <template x-for="client in results" :key="client.id">
+              <div
+                class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+                @click="selectClient(client)"
+              >
+                <div>
+                  <p class="font-medium text-gray-900" x-text="client.nombre">
+                  </p>
+                  <p class="text-sm text-gray-500" x-text="client.correo"></p>
+                </div>
+                <span class="text-blue-600 text-sm">Seleccionar →</span>
+              </div>
+            </template>
+            <div
+              x-show="results.length === 0 && searched"
+              class="text-center text-gray-500 py-4"
+            >
+              No se encontraron clientes
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button
+              @click="closeSearch()"
+              class="text-gray-500 hover:text-gray-700">Cancelar</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Agregar Mascota (Reutilizando estilos) -->
+    <div
+      x-show="showPetForm"
+      x-cloak
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      x-transition
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6"
+        @click.outside="closePetForm()"
+      >
+        <h3 class="text-lg font-bold text-gray-900 mb-4">
+          Agregar Mascota a <span
+            x-text="selectedClient?.nombre"
+            class="text-blue-600"></span>
+        </h3>
+
+        <form @submit.prevent="submitPet" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Nombre</label
+              >
+              <input
+                x-model="petForm.nombre"
+                type="text"
+                required
+                class="w-full px-3 py-2 border rounded-lg"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Especie</label
+              >
+              <select
+                x-model="petForm.especie"
+                required
+                class="w-full px-3 py-2 border rounded-lg"
+              >
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Raza</label
+              >
+              <input
+                x-model="petForm.raza"
+                type="text"
+                class="w-full px-3 py-2 border rounded-lg"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Sexo</label
+              >
+              <select
+                x-model="petForm.sexo"
+                required
+                class="w-full px-3 py-2 border rounded-lg"
+              >
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Peso (kg)</label
+              >
+              <input
+                x-model="petForm.peso"
+                type="number"
+                step="0.1"
+                class="w-full px-3 py-2 border rounded-lg"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Fecha Nac.</label
+              >
+              <input
+                x-model="petForm.fecha_nacimiento"
+                type="date"
+                class="w-full px-3 py-2 border rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              @click="closePetForm()"
+              class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >Cancelar</button
+            >
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              :disabled="loading"
+            >
+              <span x-show="loading">Guardando...</span>
+              <span x-show="!loading">Guardar Mascota</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </BaseDashboard>
 
 <script>
   //@ts-nocheck
-  import { loadSession } from '../../lib/authHelpers.js';
-  import { CitasAPI } from '../../lib/api/citas.js';
-  import { NotificacionesAPI } from '../../lib/api/notificaciones.js';
+  import { loadSession, requireRole } from "../../lib/authHelpers.js";
+  import { CitasAPI } from "../../lib/api/citas.js";
+  import { NotificacionesAPI } from "../../lib/api/notificaciones.js";
+  import { UsuariosAPI } from "../../lib/api/usuarios.js";
+  import { PacientesAPI } from "../../lib/api/pacientes.js";
 
-  let session, citasAPI, notificacionesAPI;
+  // Expose APIs to window for AlpineJS
+  window.UsuariosAPI = UsuariosAPI;
+  window.PacientesAPI = PacientesAPI;
+  window.loadSession = loadSession;
+
+  let session, citasAPI, notificacionesAPI, usuariosAPI, pacientesAPI;
   let citasData = [];
   let notificacionesData = [];
-  let filtroActual = 'todas';
+  let filtroActual = "todas";
 
-  document.addEventListener('DOMContentLoaded', async () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     try {
       session = loadSession();
       if (!session?.jwt) {
-        window.location.href = '/login';
+        window.location.href = "/login";
         return;
       }
 
       citasAPI = new CitasAPI(session.jwt);
       notificacionesAPI = new NotificacionesAPI(session.jwt);
-      
-      // El navbar ya se encarga de mostrar la info del usuario
-      // document.getElementById('user-info').textContent = session.appUser.profile.email;
+      usuariosAPI = new UsuariosAPI(session.jwt);
+      pacientesAPI = new PacientesAPI(session.jwt);
 
       await cargarDatos();
       setupEventos();
-      
+
       // Recargar cada 10s para actualizaciones en tiempo real
       setInterval(async () => {
-        console.log('🔄 Actualizando datos automáticamente...');
+        console.log("🔄 Actualizando datos automáticamente...");
         await cargarDatos();
       }, 10000);
 
       // Escuchar cambios de visibilidad de la página
-      document.addEventListener('visibilitychange', async () => {
+      document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {
-          console.log('👁️ Página visible - actualizando datos...');
+          console.log("👁️ Página visible - actualizando datos...");
           await cargarDatos();
         }
       });
     } catch (error) {
-      console.error('Error inicializando dashboard:', error);
+      console.error("Error inicializando dashboard:", error);
     }
   });
 
@@ -165,8 +683,8 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
       citasData = await citasAPI.getMisCitas();
       renderCitas();
     } catch (error) {
-      console.error('Error cargando citas:', error);
-      document.getElementById('citas-container').innerHTML = `
+      console.error("Error cargando citas:", error);
+      document.getElementById("citas-container").innerHTML = `
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
           <p class="text-center text-red-600 text-sm font-medium">Error al cargar citas</p>
           <p class="text-center text-red-500 text-xs mt-1">${error.message}</p>
@@ -178,12 +696,14 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
   async function cargarNotificaciones() {
     try {
       notificacionesData = await notificacionesAPI.getMisNotificaciones();
-      console.log('✅ Notificaciones cargadas:', notificacionesData.length);
+      console.log("✅ Notificaciones cargadas:", notificacionesData.length);
       renderNotificacionesSistema();
     } catch (error) {
-      console.error('❌ Error cargando notificaciones:', error);
+      console.error("❌ Error cargando notificaciones:", error);
       // Mostrar mensaje solo si no es el primer intento (evita mostrar error en carga inicial)
-      const container = document.getElementById('notificaciones-sistema-container');
+      const container = document.getElementById(
+        "notificaciones-sistema-container",
+      );
       if (container && notificacionesData.length === 0) {
         container.innerHTML = `
           <p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>
@@ -193,41 +713,43 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
   }
 
   function renderCitas() {
-    const container = document.getElementById('citas-container');
-    let citasFiltradas = filtroActual === 'todas' 
-      ? citasData 
-      : citasData.filter(c => c.estado === filtroActual);
+    const container = document.getElementById("citas-container");
+    let citasFiltradas =
+      filtroActual === "todas"
+        ? citasData
+        : citasData.filter((c) => c.estado === filtroActual);
 
     // Ordenar por fecha y hora (más próximas primero)
     citasFiltradas = citasFiltradas.sort((a, b) => {
-      const fechaA = new Date(a.fecha + 'T' + (a.hora || '00:00:00'));
-      const fechaB = new Date(b.fecha + 'T' + (b.hora || '00:00:00'));
+      const fechaA = new Date(a.fecha + "T" + (a.hora || "00:00:00"));
+      const fechaB = new Date(b.fecha + "T" + (b.hora || "00:00:00"));
       return fechaA - fechaB;
     });
 
     if (citasFiltradas.length === 0) {
       container.innerHTML = `
         <div class="text-center py-8 text-gray-500 text-sm">
-          No hay citas ${filtroActual === 'todas' ? '' : filtroActual + 's'}
+          No hay citas ${filtroActual === "todas" ? "" : filtroActual + "s"}
         </div>
       `;
       return;
     }
 
-    container.innerHTML = citasFiltradas.map(c => {
-      const estadoClasses = {
-        pendiente: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        confirmada: 'bg-green-100 text-green-800 border-green-200',
-        cancelada: 'bg-red-100 text-red-800 border-red-200'
-      };
-      
-      const estadoTextos = {
-        pendiente: 'Pendiente',
-        confirmada: 'Confirmada',
-        cancelada: 'Cancelada'
-      };
+    container.innerHTML = citasFiltradas
+      .map((c) => {
+        const estadoClasses = {
+          pendiente: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          confirmada: "bg-green-100 text-green-800 border-green-200",
+          cancelada: "bg-red-100 text-red-800 border-red-200",
+        };
 
-      return `
+        const estadoTextos = {
+          pendiente: "Pendiente",
+          confirmada: "Confirmada",
+          cancelada: "Cancelada",
+        };
+
+        return `
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 transition-all" data-cita-id="${c.id}">
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1">
@@ -240,26 +762,28 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
               
               <section class="flex flex-row justify-between">
                 <div class="text-sm text-gray-600 space-y-1 ">
-                  <p><span class="font-semibold text-orange-500">Paciente :</span> ${c.paciente?.nombre || '(Sin mascota)'}</p>
-                  <p><span class="font-semibold text-orange-500">Propietario :</span> ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || c.paciente?.propietario?.email || '(Sin datos)'}</p>
-                  <p><span class="font-semibold text-orange-500">Atiende :</span> Dr. ${c.veterinario?.nombreCompleto || c.veterinario?.username || 'N/A'}</p>
-                  ${c.motivo ? `<p class="text-xs text-gray-500 italic"><span class="font-semibold text-orange-500">Motivo :</span> ${c.motivo}</p>` : ''}
+                  <p><span class="font-semibold text-orange-500">Paciente :</span> ${c.paciente?.nombre || "(Sin mascota)"}</p>
+                  <p><span class="font-semibold text-orange-500">Propietario :</span> ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || c.paciente?.propietario?.email || "(Sin datos)"}</p>
+                  <p><span class="font-semibold text-orange-500">Atiende :</span> Dr. ${c.veterinario?.nombreCompleto || c.veterinario?.username || "N/A"}</p>
+                  ${c.motivo ? `<p class="text-xs text-gray-500 italic"><span class="font-semibold text-orange-500">Motivo :</span> ${c.motivo}</p>` : ""}
                 </div>
                   
 
                 <div class="text-sm text-gray-600 space-y-1 ml-6">
                   
                   <p class="text-sm text-gray-600 space-y-1 ">
-                    <p><span class="font-semibold text-orange-500">Especie :</span> ${c.paciente?.especie || 'N/A'}</p>
-                    <p><span class="font-semibold text-orange-500">Raza :</span> ${c.paciente?.raza || 'N/A'}</p>
-                    <p><span class="font-semibold text-orange-500">Sexo :</span> ${c.paciente?.sexo || 'N/A'}</p>
-                    <p><span class="font-semibold text-orange-500">Peso :</span> ${c.paciente?.peso || 'N/A'}</p>
+                    <p><span class="font-semibold text-orange-500">Especie :</span> ${c.paciente?.especie || "N/A"}</p>
+                    <p><span class="font-semibold text-orange-500">Raza :</span> ${c.paciente?.raza || "N/A"}</p>
+                    <p><span class="font-semibold text-orange-500">Sexo :</span> ${c.paciente?.sexo || "N/A"}</p>
+                    <p><span class="font-semibold text-orange-500">Peso :</span> ${c.paciente?.peso || "N/A"}</p>
                 </div>
               </section>
             </div>
           </div>
 
-          ${c.estado === 'pendiente' ? `
+          ${
+            c.estado === "pendiente"
+              ? `
             <div class="flex gap-2 pt-3 border-t border-gray-100">
               <button 
                 onclick="confirmarCita('${c.documentId}')" 
@@ -274,64 +798,81 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
                 ✗ Rechazar
               </button>
             </div>
-          ` : c.estado === 'confirmada' ? `
+          `
+              : c.estado === "confirmada"
+                ? `
             <button 
               onclick="cancelarCita('${c.documentId}')" 
               class="w-full mt-3 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
             >
               Cancelar
             </button>
-          ` : ''}
+          `
+                : ""
+          }
         </div>
       `;
-    }).join('');
+      })
+      .join("");
   }
 
   function renderNotificacionesSistema() {
-    const container = document.getElementById('notificaciones-sistema-container');
-    const noLeidas = notificacionesData.filter(n => !n.leida);
-    
-    document.getElementById('badge-notificaciones').textContent = noLeidas.length;
+    const container = document.getElementById(
+      "notificaciones-sistema-container",
+    );
+    const noLeidas = notificacionesData.filter((n) => !n.leida);
 
-    const btnMarcarLeidas = document.getElementById('btn-marcar-leidas');
+    document.getElementById("badge-notificaciones").textContent =
+      noLeidas.length;
+
+    const btnMarcarLeidas = document.getElementById("btn-marcar-leidas");
     if (noLeidas.length > 0) {
-      btnMarcarLeidas.style.display = 'block';
+      btnMarcarLeidas.style.display = "block";
     } else {
-      btnMarcarLeidas.style.display = 'none';
+      btnMarcarLeidas.style.display = "none";
     }
 
     if (notificacionesData.length === 0) {
-      container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>';
+      container.innerHTML =
+        '<p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>';
       return;
     }
 
     const iconosPorTipo = {
-      'cancelacion': '🚫',
-      'recordatorio': '⏰',
-      'general': '🔔',
-      'confirmacion': '✅',
-      'default': '📋'
+      cancelacion: "🚫",
+      recordatorio: "⏰",
+      general: "🔔",
+      confirmacion: "✅",
+      default: "📋",
     };
 
-    container.innerHTML = notificacionesData.slice(0, 15).map(n => {
-      const icono = iconosPorTipo[n.tipo] || iconosPorTipo.default;
-      const bgClass = n.leida ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200';
-      const fontClass = n.leida ? 'text-gray-600' : 'text-gray-900 font-medium';
+    container.innerHTML = notificacionesData
+      .slice(0, 15)
+      .map((n) => {
+        const icono = iconosPorTipo[n.tipo] || iconosPorTipo.default;
+        const bgClass = n.leida
+          ? "bg-gray-50 border-gray-200"
+          : "bg-blue-50 border-blue-200";
+        const fontClass = n.leida
+          ? "text-gray-600"
+          : "text-gray-900 font-medium";
 
-      const fechaFormateada = new Date(n.fecha_notificacion).toLocaleDateString('es-CL', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+        const fechaFormateada = new Date(
+          n.fecha_notificacion,
+        ).toLocaleDateString("es-CL", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
-      // Obtener ID de cita relacionada si existe
-      const citaId = n.cita_relacionada?.id || null;
-      const clickHandler = citaId 
-        ? `onclick="scrollYMarcarLeida(${n.id}, ${citaId})"`
-        : `onclick="marcarNotificacionLeida(${n.id})"`;
+        // Obtener ID de cita relacionada si existe
+        const citaId = n.cita_relacionada?.id || null;
+        const clickHandler = citaId
+          ? `onclick="scrollYMarcarLeida(${n.id}, ${citaId})"`
+          : `onclick="marcarNotificacionLeida(${n.id})"`;
 
-      return `
+        return `
         <div 
           class="${bgClass} border rounded-lg p-3 text-xs hover:shadow-sm transition-shadow cursor-pointer"
           ${clickHandler}
@@ -339,46 +880,57 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
           <div class="flex items-start gap-2">
             <span class="text-base">${icono}</span>
             <div class="flex-1">
-              <p class="${fontClass} text-xs font-semibold mb-1">${n.titulo || 'Notificación'}</p>
+              <p class="${fontClass} text-xs font-semibold mb-1">${n.titulo || "Notificación"}</p>
               <p class="text-gray-700 text-xs mb-1">${n.mensaje}</p>
               <p class="text-gray-500 text-xs">${fechaFormateada}</p>
             </div>
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join("");
   }
 
   function setupEventos() {
-    document.querySelectorAll('[data-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        console.log('🔘 Filtro clickeado:', btn.dataset.filter);
-        
+    document.querySelectorAll("[data-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        console.log("🔘 Filtro clickeado:", btn.dataset.filter);
+
         // Remover estilo activo de todos los botones
-        document.querySelectorAll('[data-filter]').forEach(b => {
-          b.classList.remove('bg-orange-500', 'text-white', 'hover:bg-orange-600');
-          b.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+        document.querySelectorAll("[data-filter]").forEach((b) => {
+          b.classList.remove(
+            "bg-orange-500",
+            "text-white",
+            "hover:bg-orange-600",
+          );
+          b.classList.add("bg-gray-100", "text-gray-700", "hover:bg-gray-200");
         });
-        
+
         // Aplicar estilo activo al botón clickeado
-        btn.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
-        btn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
-        
+        btn.classList.remove(
+          "bg-gray-100",
+          "text-gray-700",
+          "hover:bg-gray-200",
+        );
+        btn.classList.add("bg-orange-500", "text-white", "hover:bg-orange-600");
+
         filtroActual = btn.dataset.filter;
-        console.log('🛠️ Filtro aplicado:', filtroActual);
+        console.log("🛠️ Filtro aplicado:", filtroActual);
         renderCitas();
       });
     });
 
     // Botón marcar todas como leídas
-    document.getElementById('btn-marcar-leidas').addEventListener('click', async () => {
-      try {
-        await notificacionesAPI.marcarTodasLeidas();
-        await cargarNotificaciones();
-      } catch (error) {
-        console.error('Error marcando notificaciones:', error);
-      }
-    });
+    document
+      .getElementById("btn-marcar-leidas")
+      .addEventListener("click", async () => {
+        try {
+          await notificacionesAPI.marcarTodasLeidas();
+          await cargarNotificaciones();
+        } catch (error) {
+          console.error("Error marcando notificaciones:", error);
+        }
+      });
   }
 
   window.marcarNotificacionLeida = async (notificacionId) => {
@@ -386,62 +938,84 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
       await notificacionesAPI.marcarLeida(notificacionId);
       await cargarNotificaciones();
     } catch (error) {
-      console.error('Error marcando notificación:', error);
+      console.error("Error marcando notificación:", error);
     }
   };
 
   window.scrollYMarcarLeida = async (notificacionId, citaId) => {
-    console.log('🎯 scrollYMarcarLeida llamado con:', { notificacionId, citaId });
-    
+    console.log("🎯 scrollYMarcarLeida llamado con:", {
+      notificacionId,
+      citaId,
+    });
+
     // Marcar como leída
     try {
       await notificacionesAPI.marcarLeida(notificacionId);
       await cargarNotificaciones();
     } catch (error) {
-      console.error('Error marcando notificación:', error);
+      console.error("Error marcando notificación:", error);
     }
 
-    console.log('📊 citasData disponible:', citasData);
-    
+    console.log("📊 citasData disponible:", citasData);
+
     // Buscar la cita por ID en el array de datos
-    const cita = citasData.find(c => c.id === citaId);
-    console.log('🔍 Cita encontrada:', cita);
-    
+    const cita = citasData.find((c) => c.id === citaId);
+    console.log("🔍 Cita encontrada:", cita);
+
     if (!cita) {
-      console.log('❌ Cita no encontrada en los datos actuales');
+      console.log("❌ Cita no encontrada en los datos actuales");
       return;
     }
 
     // Buscar el elemento en el DOM por data-cita-id
     setTimeout(() => {
       const citaElemento = document.querySelector(`[data-cita-id="${citaId}"]`);
-      console.log('🎨 Elemento DOM encontrado:', citaElemento);
-      
+      console.log("🎨 Elemento DOM encontrado:", citaElemento);
+
       if (citaElemento) {
-        console.log('✅ Haciendo scroll al elemento');
-        citaElemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("✅ Haciendo scroll al elemento");
+        citaElemento.scrollIntoView({ behavior: "smooth", block: "center" });
         // Destacar brevemente la cita
-        citaElemento.classList.add('ring-4', 'ring-orange-300', 'ring-offset-2');
+        citaElemento.classList.add(
+          "ring-4",
+          "ring-orange-300",
+          "ring-offset-2",
+        );
         setTimeout(() => {
-          citaElemento.classList.remove('ring-4', 'ring-orange-300', 'ring-offset-2');
+          citaElemento.classList.remove(
+            "ring-4",
+            "ring-orange-300",
+            "ring-offset-2",
+          );
         }, 2500);
       } else {
-        console.log('⚠️ Elemento no visible, intentando cambiar filtro');
+        console.log("⚠️ Elemento no visible, intentando cambiar filtro");
         // Si no está visible, cambiar filtro para mostrarla
-        const filtroBtn = document.querySelector(`[data-filter="${cita.estado}"]`);
-        console.log('🔘 Botón filtro encontrado:', filtroBtn, 'para estado:', cita.estado);
-        
+        const filtroBtn = document.querySelector(
+          `[data-filter="${cita.estado}"]`,
+        );
+        console.log(
+          "🔘 Botón filtro encontrado:",
+          filtroBtn,
+          "para estado:",
+          cita.estado,
+        );
+
         if (filtroBtn) {
           filtroBtn.click();
           setTimeout(() => {
             const elem = document.querySelector(`[data-cita-id="${citaId}"]`);
-            console.log('🔄 Elemento después de cambiar filtro:', elem);
-            
+            console.log("🔄 Elemento después de cambiar filtro:", elem);
+
             if (elem) {
-              elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              elem.classList.add('ring-4', 'ring-orange-300', 'ring-offset-2');
+              elem.scrollIntoView({ behavior: "smooth", block: "center" });
+              elem.classList.add("ring-4", "ring-orange-300", "ring-offset-2");
               setTimeout(() => {
-                elem.classList.remove('ring-4', 'ring-orange-300', 'ring-offset-2');
+                elem.classList.remove(
+                  "ring-4",
+                  "ring-orange-300",
+                  "ring-offset-2",
+                );
               }, 2500);
             }
           }, 300);
@@ -451,41 +1025,41 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
   };
 
   window.confirmarCita = async (documentId) => {
-    if (!confirm('¿Confirmar esta cita?')) return;
-    
+    if (!confirm("¿Confirmar esta cita?")) return;
+
     try {
       await citasAPI.confirmarCita(documentId);
       await cargarCitas();
-      alert('✅ Cita confirmada');
+      alert("✅ Cita confirmada");
     } catch (error) {
-      console.error('Error confirmando cita:', error);
-      alert('❌ Error: ' + error.message);
+      console.error("Error confirmando cita:", error);
+      alert("❌ Error: " + error.message);
     }
   };
 
   window.rechazarCita = async (documentId) => {
-    if (!confirm('¿Rechazar esta cita?')) return;
-    
+    if (!confirm("¿Rechazar esta cita?")) return;
+
     try {
       await citasAPI.cancelarCita(documentId);
       await cargarCitas();
-      alert('❌ Cita rechazada');
+      alert("❌ Cita rechazada");
     } catch (error) {
-      console.error('Error rechazando cita:', error);
-      alert('❌ Error: ' + error.message);
+      console.error("Error rechazando cita:", error);
+      alert("❌ Error: " + error.message);
     }
   };
 
   window.cancelarCita = async (documentId) => {
-    if (!confirm('¿Cancelar esta cita?')) return;
-    
+    if (!confirm("¿Cancelar esta cita?")) return;
+
     try {
       await citasAPI.cancelarCita(documentId);
       await cargarCitas();
-      alert('🚫 Cita cancelada');
+      alert("🚫 Cita cancelada");
     } catch (error) {
-      console.error('Error cancelando cita:', error);
-      alert('❌ Error: ' + error.message);
+      console.error("Error cancelando cita:", error);
+      alert("❌ Error: " + error.message);
     }
   };
 
@@ -493,24 +1067,20 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
     const filtroBtn = document.querySelector('[data-filter="pendiente"]');
     if (filtroBtn) filtroBtn.click();
     setTimeout(() => {
-      window.scrollTo({ top: 200, behavior: 'smooth' });
+      window.scrollTo({ top: 200, behavior: "smooth" });
     }, 100);
   };
 
   function formatearFecha(fecha) {
-    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    return new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   }
-</script>
 
-<script type="module">
-  import { requireRole } from "/src/lib/authHelpers.js";
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", async () => {
       console.log("DOM listo, ejecutando requireRole para recepcionista");
       await requireRole(["recepcionista"]);
     });
@@ -518,4 +1088,261 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
     console.log("DOM ya listo, ejecutando requireRole para recepcionista");
     await requireRole(["recepcionista"]);
   }
+</script>
+
+<script is:inline>
+  // AlpineJS Data Logic
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("clientRegistration", () => ({
+      showForm: false,
+      showSuccess: false,
+      loading: false,
+      activationLink: "",
+      copied: false,
+      form: {
+        nombre: "",
+        correo: "",
+        telefono: "",
+        nombre_mascota: "",
+        especie: "",
+        raza: "",
+        sexo: "",
+        peso: "",
+        fecha_nacimiento: "",
+      },
+
+      openForm() {
+        this.showForm = true;
+        this.resetForm();
+      },
+
+      closeForm() {
+        this.showForm = false;
+      },
+
+      closeSuccess() {
+        this.showSuccess = false;
+        this.copied = false;
+      },
+
+      resetForm() {
+        this.form = {
+          nombre: "",
+          correo: "",
+          telefono: "",
+          nombre_mascota: "",
+          especie: "",
+          raza: "",
+          sexo: "",
+          peso: "",
+          fecha_nacimiento: "",
+        };
+      },
+
+      async submitForm() {
+        this.loading = true;
+        try {
+          // Obtener sesión y APIs desde window (expuestas por el otro script)
+          const session = window.loadSession();
+          if (!session?.jwt) throw new Error("No hay sesión activa");
+
+          const usuariosAPI = new window.UsuariosAPI(session.jwt);
+          const pacientesAPI = new window.PacientesAPI(session.jwt);
+
+          // 1. Crear Usuario (Cliente Presencial)
+          const datosUsuario = {
+            nombre: this.form.nombre,
+            correo: this.form.correo,
+            telefono: this.form.telefono,
+          };
+
+          console.log("📝 Creando cliente presencial:", datosUsuario);
+          const respuestaUsuario =
+            await usuariosAPI.crearClientePresencial(datosUsuario);
+
+          const nuevoUsuario = respuestaUsuario.usuario;
+          this.activationLink = respuestaUsuario.activationLink;
+
+          if (!nuevoUsuario || !nuevoUsuario.documentId) {
+            throw new Error("No se pudo obtener el ID del usuario creado");
+          }
+
+          // 2. Crear Mascota vinculada
+          // El propietario debe ser el ID del usuario de users-permissions (auth), no el del perfil Usuario
+          const userId =
+            typeof nuevoUsuario.user === "object"
+              ? nuevoUsuario.user.id
+              : nuevoUsuario.user;
+
+          const datosMascota = {
+            nombre: this.form.nombre_mascota,
+            especie: this.form.especie,
+            raza: this.form.raza,
+            sexo: this.form.sexo,
+            peso: this.form.peso ? parseFloat(this.form.peso) : null,
+            fecha_nacimiento: this.form.fecha_nacimiento || null,
+            propietario: userId,
+          };
+
+          console.log("🐶 Creando mascota:", datosMascota);
+          await pacientesAPI.crearPaciente(datosMascota);
+
+          // Éxito
+          this.showForm = false;
+          this.showSuccess = true;
+        } catch (error) {
+          console.error("Error en registro:", error);
+          alert(
+            "❌ Error al registrar: " + (error.message || "Error desconocido"),
+          );
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      copyLink() {
+        navigator.clipboard
+          .writeText(this.activationLink)
+          .then(() => {
+            this.copied = true;
+            setTimeout(() => {
+              this.copied = false;
+            }, 2000);
+          })
+          .catch((err) => {
+            console.error("Error al copiar:", err);
+            alert(
+              "No se pudo copiar automáticamente. Por favor selecciónalo manualmente.",
+            );
+          });
+      },
+    }));
+
+    Alpine.data("clientSearch", () => ({
+      showSearch: false,
+      showPetForm: false,
+      loading: false,
+      searchTerm: "",
+      results: [],
+      searched: false,
+      selectedClient: null,
+      petForm: {
+        nombre: "",
+        especie: "Perro",
+        raza: "",
+        sexo: "Macho",
+        peso: "",
+        fecha_nacimiento: "",
+      },
+
+      openSearch() {
+        this.showSearch = true;
+        this.searchTerm = "";
+        this.results = [];
+        this.searched = false;
+      },
+
+      closeSearch() {
+        this.showSearch = false;
+      },
+
+      async search() {
+        if (!this.searchTerm.trim()) return;
+        this.loading = true;
+        this.searched = true;
+        try {
+          const session = window.loadSession();
+          const usuariosAPI = new window.UsuariosAPI(session.jwt);
+          // Implement search in UsuariosAPI or use a direct fetch here for simplicity if API method missing
+          // Assuming we need to add search method to UsuariosAPI or filter client-side if list is small (not recommended)
+          // Let's assume we add searching to UsuariosAPI or use a custom query
+
+          // For now, let's try to fetch all users and filter (temporary, better to add search endpoint)
+          // Or better, use the existing getUsuarios if it supports filters
+          // But getUsuarios might not be exposed.
+
+          // Let's fetch from /api/usuarios?filters[$or][0][nombre][$contains]=term&filters[$or][1][correo][$contains]=term
+          const response = await fetch(
+            `${window.STRAPI_URL}/api/usuarios?filters[$or][0][nombre][$containsi]=${this.searchTerm}&filters[$or][1][correo][$containsi]=${this.searchTerm}&populate=user`,
+            {
+              headers: { Authorization: `Bearer ${session.jwt}` },
+            },
+          );
+          const data = await response.json();
+          this.results = data.data;
+        } catch (error) {
+          console.error("Error searching:", error);
+          alert("Error al buscar clientes");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      selectClient(client) {
+        this.selectedClient = client;
+        this.showSearch = false;
+        this.showPetForm = true;
+        this.resetPetForm();
+      },
+
+      closePetForm() {
+        this.showPetForm = false;
+        this.selectedClient = null;
+      },
+
+      resetPetForm() {
+        this.petForm = {
+          nombre: "",
+          especie: "Perro",
+          raza: "",
+          sexo: "Macho",
+          peso: "",
+          fecha_nacimiento: "",
+        };
+      },
+
+      async submitPet() {
+        if (!this.selectedClient) return;
+        this.loading = true;
+        try {
+          const session = window.loadSession();
+          const pacientesAPI = new window.PacientesAPI(session.jwt);
+
+          // Ensure we have the correct User ID (auth)
+          // The search result 'client' is from 'api::usuario.usuario'
+          // It should have 'user' populated.
+          const userId =
+            this.selectedClient.user?.id || this.selectedClient.user;
+
+          if (!userId)
+            throw new Error(
+              "No se pudo obtener el ID de usuario para vincular",
+            );
+
+          const datosMascota = {
+            nombre: this.petForm.nombre,
+            especie: this.petForm.especie,
+            raza: this.petForm.raza,
+            sexo: this.petForm.sexo,
+            peso: this.petForm.peso ? parseFloat(this.petForm.peso) : null,
+            fecha_nacimiento: this.petForm.fecha_nacimiento || null,
+            propietario: userId,
+          };
+
+          await pacientesAPI.crearPaciente(datosMascota);
+
+          alert("✅ Mascota agregada exitosamente");
+          this.closePetForm();
+
+          // Refresh dashboard data if needed
+          // window.location.reload(); // Or trigger a refresh event
+        } catch (error) {
+          console.error("Error adding pet:", error);
+          alert("❌ Error al agregar mascota: " + error.message);
+        } finally {
+          this.loading = false;
+        }
+      },
+    }));
+  });
 </script>

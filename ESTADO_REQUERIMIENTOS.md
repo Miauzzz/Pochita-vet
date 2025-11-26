@@ -22,12 +22,11 @@ correo : jdoe.rec@pochita.cl
 pass   : recepcionista
 
 **Clientes**
+correo : test@cliente.com
+pass   : prueba123
+
 correo : pepitog@gmail.com
 pass   : cliente123
-
-correo : marta@gmail.com
-pass   : cliente123
-
 ---
 
 ## ✅ REQUERIMIENTOS COMPLETADOS AL 100%
