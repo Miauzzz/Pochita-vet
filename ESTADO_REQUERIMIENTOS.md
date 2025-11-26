@@ -5,6 +5,30 @@
 **Stack:** Strapi v5 (Backend) + Astro (Frontend)
 
 ---
+# Cuentas de acceso para pruebas
+
+**Strapi access**
+Superadmin : test@test.com
+wtmk
+
+admin : admin@admin.com
+pass  : Admin123.
+
+**Veterinaria**
+correo : asmith.vet@pochita.cl
+pass   : veterinario
+
+correo : jdoe.rec@pochita.cl 
+pass   : recepcionista
+
+**Clientes**
+correo : pepitog@gmail.com
+pass   : cliente123
+
+correo : marta@gmail.com
+pass   : cliente123
+
+---
 
 ## ✅ REQUERIMIENTOS COMPLETADOS AL 100%
 

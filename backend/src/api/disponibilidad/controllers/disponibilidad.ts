@@ -140,6 +140,38 @@ export default factories.createCoreController('api::disponibilidad.disponibilida
       
       console.log('Datos recibidos:', requestData);
 
+      // Validación: evitar solapamientos para el mismo veterinario en la misma fecha
+      const { fecha, hora_inicio, hora_fin } = requestData;
+
+      const timeToMinutes = (t: any) => {
+        if (!t) return null;
+        const parts = String(t).split(':');
+        const hh = parseInt(parts[0] || '0', 10);
+        const mm = parseInt(parts[1] || '0', 10);
+        return hh * 60 + mm;
+      };
+
+      const newStart = timeToMinutes(hora_inicio);
+      const newEnd = timeToMinutes(hora_fin);
+
+      if (fecha && newStart !== null && newEnd !== null) {
+        const existentes: any[] = await strapi.entityService.findMany('api::disponibilidad.disponibilidad', {
+          filters: {
+            fecha: { $eq: fecha },
+            veterinario: { id: user.id },
+          },
+          fields: ['id', 'hora_inicio', 'hora_fin'],
+        });
+
+        for (const ex of existentes) {
+          const exStart = timeToMinutes(ex.hora_inicio);
+          const exEnd = timeToMinutes(ex.hora_fin);
+          if (!(newEnd <= exStart || newStart >= exEnd)) {
+            return ctx.badRequest('Ya existe una disponibilidad solapada para este veterinario en la misma fecha y horario');
+          }
+        }
+      }
+
       // Crear la disponibilidad usando entityService con el formato correcto
       const entity = await strapi.entityService.create('api::disponibilidad.disponibilidad', {
         data: {
@@ -165,6 +197,62 @@ export default factories.createCoreController('api::disponibilidad.disponibilida
       return { data: populatedEntity };
     } catch (error) {
       console.error('Error al crear disponibilidad:', error);
+      ctx.throw(500, error.message);
+    }
+  },
+
+  /**
+   * Actualizar disponibilidad - validar solapamiento si cambian fecha/hora
+   */
+  async update(ctx) {
+    try {
+      const user = ctx.state.user;
+      if (!user) return ctx.unauthorized('Debes estar autenticado');
+
+      const { id: documentId } = ctx.params;
+      const requestData = ctx.request.body.data || {};
+
+      const fecha = requestData.fecha;
+      const hora_inicio = requestData.hora_inicio;
+      const hora_fin = requestData.hora_fin;
+
+      const timeToMinutes = (t: any) => {
+        if (!t) return null;
+        const parts = String(t).split(':');
+        const hh = parseInt(parts[0] || '0', 10);
+        const mm = parseInt(parts[1] || '0', 10);
+        return hh * 60 + mm;
+      };
+
+      if (fecha && hora_inicio && hora_fin) {
+        const newStart = timeToMinutes(hora_inicio);
+        const newEnd = timeToMinutes(hora_fin);
+
+        const existentes: any[] = await strapi.entityService.findMany('api::disponibilidad.disponibilidad', {
+          filters: {
+            fecha: { $eq: fecha },
+            veterinario: { id: user.id },
+            id: { $ne: parseInt(documentId, 10) },
+          },
+          fields: ['id', 'hora_inicio', 'hora_fin'],
+        });
+
+        for (const ex of existentes) {
+          const exStart = timeToMinutes(ex.hora_inicio);
+          const exEnd = timeToMinutes(ex.hora_fin);
+          if (!(newEnd <= exStart || newStart >= exEnd)) {
+            return ctx.badRequest('La actualización solapa con otra disponibilidad existente');
+          }
+        }
+      }
+
+      const updated = await strapi.entityService.update('api::disponibilidad.disponibilidad', documentId, {
+        data: requestData,
+      });
+
+      return { data: updated };
+    } catch (error) {
+      console.error('Error en update disponibilidad:', error);
       ctx.throw(500, error.message);
     }
   },

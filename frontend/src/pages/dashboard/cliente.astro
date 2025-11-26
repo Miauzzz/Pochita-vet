@@ -45,9 +45,8 @@ import Loading from '../../components/ui/Loading.astro';
       <!-- Contenido Principal -->
       <div class="flex-1 space-y-6">
         
-        <!-- Header -->
+        <!-- Header (usuario removido intencionalmente) -->
         <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-600" id="user-info">Cargando...</div>
         </div>
 
         <!-- Mis Mascotas -->
@@ -374,15 +373,14 @@ import Loading from '../../components/ui/Loading.astro';
       return;
     }
 
-    console.log('Sesión cargada:', session.appUser.profile.email);
+    console.log('Sesión cargada:', session.appUser.profile?.email);
 
     pacientesAPI = new PacientesAPI(session.jwt);
     citasAPI = new CitasAPI(session.jwt);
     disponibilidadesAPI = new DisponibilidadesAPI(session.jwt);
     notificacionesAPI = new NotificacionesAPI(session.jwt);
 
-    // Mostrar info usuario
-    document.getElementById('user-info').textContent = session.appUser.profile.email;
+    // Usuario en header removido: no asignamos nada a #user-info para evitar render
 
     // Cargar datos
     console.log('Cargando datos iniciales...');

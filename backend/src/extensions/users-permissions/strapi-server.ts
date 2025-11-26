@@ -27,19 +27,11 @@ export default (plugin: any) => {
         const { result } = event;
 
         console.log('\n>>> afterCreate de plugin::users-permissions.user EJECUTADO <<<');
-        
+
         // Obtener el user completo con el rol populado
         const userWithRole = await strapi.query('plugin::users-permissions.user').findOne({
           where: { id: result.id },
           populate: ['role'],
-        });
-        
-        console.log('Usuario creado:', {
-          id: userWithRole.id,
-          email: userWithRole.email,
-          username: userWithRole.username,
-          confirmed: userWithRole.confirmed,
-          role: userWithRole.role?.name || '(sin rol)',
         });
 
         // 1) Mapear rol de Strapi a tipo_usuario
@@ -69,53 +61,81 @@ export default (plugin: any) => {
             },
           });
 
-          console.log('>>> Perfil Usuario creado:', {
-            id: perfil.id,
-            correo: perfil.correo,
-            tipo_usuario: perfil.tipo_usuario,
-          });
+          // Sólo loguear creación de perfil cuando es empleado (veterinario/recepcionista)
+          if (tipoUsuario === 'veterinario' || tipoUsuario === 'recepcionista') {
+            console.log('Usuario creado:', {
+              id: userWithRole.id,
+              email: userWithRole.email,
+              username: userWithRole.username,
+              confirmed: userWithRole.confirmed,
+              role: userWithRole.role?.name || '(sin rol)',
+            });
+
+            console.log('>>> Perfil Usuario creado:', {
+              id: perfil.id,
+              correo: perfil.correo,
+              tipo_usuario: perfil.tipo_usuario,
+            });
+          }
         } else {
-          console.log('>>> Perfil Usuario ya existía, no se crea de nuevo');
+          // Evitar ruido en consola para clientes
+          if (existing.tipo_usuario === 'veterinario' || existing.tipo_usuario === 'recepcionista') {
+            console.log('>>> Perfil Usuario ya existía, no se crea de nuevo');
+          }
         }
 
-        // 3) Generar token de activación (resetPasswordToken)
-        const token = crypto.randomBytes(32).toString('hex');
+        // 3) Generar token de activación y mostrar link SOLO para empleados creados desde admin
+        if (tipoUsuario === 'veterinario' || tipoUsuario === 'recepcionista') {
+          const token = crypto.randomBytes(32).toString('hex');
 
-        await strapi.query('plugin::users-permissions.user').update({
-          where: { id: userWithRole.id },
-          data: { resetPasswordToken: token },
-        });
+          await strapi.query('plugin::users-permissions.user').update({
+            where: { id: userWithRole.id },
+            data: { resetPasswordToken: token },
+          });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4321';
-        const link = `${frontendUrl}/activar-cuenta?token=${token}&email=${encodeURIComponent(
-          userWithRole.email,
-        )}`;
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4321';
+          const link = `${frontendUrl}/activar-cuenta?token=${token}&email=${encodeURIComponent(
+            userWithRole.email,
+          )}`;
 
-        console.log('\n📧 Nueva cuenta de empleado');
-        console.log('Username :', userWithRole.username);
-        console.log('Email    :', userWithRole.email);
-        console.log('Rol      :', userWithRole.role?.name || '(sin rol)');
-        console.log('Tipo     :', tipoUsuario);
-        console.log('\n🔗 LINK DE ACTIVACIÓN (cópialo y envíalo al empleado):');
-        console.log(link);
-        console.log('========================================\n');
+          console.log('\n📧 Nueva cuenta de empleado');
+          console.log('Username :', userWithRole.username);
+          console.log('Email    :', userWithRole.email);
+          console.log('Rol      :', userWithRole.role?.name || '(sin rol)');
+          console.log('Tipo     :', tipoUsuario);
+          console.log('\n🔗 LINK DE ACTIVACIÓN (cópialo y envíalo al empleado):');
+          console.log(link);
+          console.log('========================================\n');
+        }
       },
 
       // CUANDO SE ACTUALIZA UN USER (por ejemplo, cambio de rol)
       async afterUpdate(event: any) {
         const { result, params } = event;
 
-        console.log('\n>>> afterUpdate de plugin::users-permissions.user EJECUTADO <<<');
-        console.log('Usuario actualizado:', {
-          id: result.id,
-          email: result.email,
-          role: result.role?.name,
-        });
+        // Determinar nombre de rol actualizado (si viene en params o en el resultado)
+        let updatedRoleName = result.role?.name;
+        let roleFromParams = null;
+        if (params?.data?.role) {
+          roleFromParams = await strapi.query('plugin::users-permissions.role').findOne({
+            where: { id: params.data.role },
+          });
+          if (roleFromParams?.name) updatedRoleName = roleFromParams.name;
+        }
+
+        // Mostrar logs sólo si corresponde a empleado
+        if (updatedRoleName === 'Veterinario' || updatedRoleName === 'Recepcionista') {
+          console.log('\n>>> afterUpdate de plugin::users-permissions.user EJECUTADO <<<');
+          console.log('Usuario actualizado:', {
+            id: result.id,
+            email: result.email,
+            role: updatedRoleName,
+          });
+        }
 
         // Si en la actualización viene un cambio de rol
         if (params?.data?.role) {
-          // Buscar el rol por ID
-          const role = await strapi.query('plugin::users-permissions.role').findOne({
+          const role = roleFromParams || await strapi.query('plugin::users-permissions.role').findOne({
             where: { id: params.data.role },
           });
 
@@ -134,13 +154,19 @@ export default (plugin: any) => {
               data: { tipo_usuario: tipoUsuario },
             });
 
-            console.log(
-              `>>> Tipo_usuario sincronizado: ${result.email} → ${tipoUsuario}\n`,
-            );
+            // Loggear sincronización sólo si el nuevo tipo es empleado
+            if (tipoUsuario === 'veterinario' || tipoUsuario === 'recepcionista') {
+              console.log(
+                `>>> Tipo_usuario sincronizado: ${result.email} → ${tipoUsuario}\n`,
+              );
+            }
           } else {
-            console.log(
-              '>>> No se encontró perfil Usuario para sincronizar tipo_usuario\n',
-            );
+            // Mostrar sólo si se trata de un empleado para evitar ruido
+            if (tipoUsuario === 'veterinario' || tipoUsuario === 'recepcionista') {
+              console.log(
+                '>>> No se encontró perfil Usuario para sincronizar tipo_usuario\n',
+              );
+            }
           }
         }
       },

@@ -3,7 +3,7 @@
  */
 
 import { factories } from '@strapi/strapi'
-import { notificarRecepcionistas } from '../../../utils/notificaciones';
+import { notificarRecepcionistas, crearNotificacion } from '../../../utils/notificaciones';
 
 export default factories.createCoreController('api::cita.cita', ({ strapi }) => ({
   /**
@@ -199,6 +199,20 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
             citaId
           );
 
+          // Notificar al veterinario
+          if (citaCompleta.veterinario?.id) {
+            await crearNotificacion(
+              strapi,
+              'agenda',
+              'Nueva cita asignada',
+              `Tienes una nueva cita con ${pacienteNombre} el ${fechaFormateada} a las ${horaFormateada}`,
+              citaCompleta.veterinario.id,
+              user.id,
+              citaId
+            );
+            console.log('📢 Notificación enviada: Veterinario notificado de nueva cita');
+          }
+
           console.log('📢 Notificación enviada: Nueva cita creada');
         }
       } catch (notifError: any) {
@@ -249,13 +263,46 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
         // Si se confirma, asignar recepcionista
         if (requestData.estado === 'confirmada') {
           requestData.recepcionista = user.id;
+
+          // Notificar al cliente (propietario)
+          try {
+            const citaConfirmada: any = await strapi.entityService.findOne('api::cita.cita', documentId, {
+              populate: {
+                paciente: { populate: ['propietario'] },
+                veterinario: true
+              }
+            });
+
+            if (citaConfirmada?.paciente?.propietario?.id) {
+              const fechaFormateada = new Date(citaConfirmada.fecha).toLocaleDateString('es-CL');
+              const horaFormateada = citaConfirmada.hora?.substring(0, 5) || 'N/A';
+              const vetNombre = citaConfirmada.veterinario?.nombreCompleto || 'Veterinario';
+
+              await crearNotificacion(
+                strapi,
+                'estado_cita',
+                'Cita Confirmada',
+                `Tu cita para ${citaConfirmada.paciente.nombre} con Dr. ${vetNombre} el ${fechaFormateada} a las ${horaFormateada} ha sido confirmada.`,
+                citaConfirmada.paciente.propietario.id,
+                user.id,
+                citaConfirmada.id
+              );
+              console.log('📢 Notificación enviada: Cliente notificado de confirmación');
+            }
+          } catch (err) {
+            console.error('Error notificando confirmación:', err);
+          }
         }
         
         // Si se cancela una cita, liberar la disponibilidad
         if (requestData.estado === 'cancelada') {
           try {
             const citaActual: any = await strapi.entityService.findOne('api::cita.cita', documentId, {
-              populate: ['disponibilidad', 'veterinario', 'paciente']
+              populate: {
+                disponibilidad: true,
+                veterinario: true,
+                paciente: { populate: ['propietario'] }
+              }
             });
             
             if (citaActual?.disponibilidad?.documentId) {
@@ -291,7 +338,52 @@ export default factories.createCoreController('api::cita.cita', ({ strapi }) => 
                 citaActual.id
               );
 
+              // Notificar al cliente
+              if (citaActual.paciente?.propietario?.id) {
+                await crearNotificacion(
+                  strapi,
+                  'cancelacion',
+                  'Cita Cancelada',
+                  `El Dr. ${veterinarioNombre} ha cancelado la cita de ${pacienteNombre} para el ${fechaFormateada}. Por favor reagenda.`,
+                  citaActual.paciente.propietario.id,
+                  user.id,
+                  citaActual.id
+                );
+              }
+
               console.log('📢 Notificación enviada: Veterinario canceló cita');
+            } else if (roleName === 'Recepcionista' && citaActual) {
+              // Cancelada por recepcionista -> Notificar Veterinario y Cliente
+              const fechaFormateada = new Date(citaActual.fecha).toLocaleDateString('es-CL');
+              const horaFormateada = citaActual.hora?.substring(0, 5) || 'N/A';
+              const pacienteNombre = citaActual.paciente?.nombre || 'mascota';
+
+              // Notificar Veterinario
+              if (citaActual.veterinario?.id) {
+                await crearNotificacion(
+                  strapi,
+                  'cancelacion',
+                  'Cita Cancelada',
+                  `La cita con ${pacienteNombre} el ${fechaFormateada} a las ${horaFormateada} ha sido cancelada por recepción.`,
+                  citaActual.veterinario.id,
+                  user.id,
+                  citaActual.id
+                );
+              }
+
+              // Notificar Cliente
+              if (citaActual.paciente?.propietario?.id) {
+                await crearNotificacion(
+                  strapi,
+                  'cancelacion',
+                  'Cita Cancelada',
+                  `Tu cita para ${pacienteNombre} el ${fechaFormateada} a las ${horaFormateada} ha sido cancelada. Contacta a recepción para más detalles.`,
+                  citaActual.paciente.propietario.id,
+                  user.id,
+                  citaActual.id
+                );
+              }
+              console.log('📢 Notificación enviada: Recepción canceló cita (Vet y Cliente notificados)');
             }
           } catch (dispError: any) {
             console.error('❌ Error al liberar disponibilidad:', dispError.message);

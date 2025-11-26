@@ -124,32 +124,38 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
   let filtroActual = 'todas';
 
   document.addEventListener('DOMContentLoaded', async () => {
-    session = loadSession();
-    if (!session?.jwt) {
-      window.location.href = '/login';
-      return;
-    }
-
-    citasAPI = new CitasAPI(session.jwt);
-    notificacionesAPI = new NotificacionesAPI(session.jwt);
-    document.getElementById('user-info').textContent = session.appUser.profile.email;
-
-    await cargarDatos();
-    setupEventos();
-    
-    // Recargar cada 10s para actualizaciones en tiempo real
-    setInterval(async () => {
-      console.log('🔄 Actualizando datos automáticamente...');
-      await cargarDatos();
-    }, 10000);
-
-    // Escuchar cambios de visibilidad de la página
-    document.addEventListener('visibilitychange', async () => {
-      if (!document.hidden) {
-        console.log('👁️ Página visible - actualizando datos...');
-        await cargarDatos();
+    try {
+      session = loadSession();
+      if (!session?.jwt) {
+        window.location.href = '/login';
+        return;
       }
-    });
+
+      citasAPI = new CitasAPI(session.jwt);
+      notificacionesAPI = new NotificacionesAPI(session.jwt);
+      
+      // El navbar ya se encarga de mostrar la info del usuario
+      // document.getElementById('user-info').textContent = session.appUser.profile.email;
+
+      await cargarDatos();
+      setupEventos();
+      
+      // Recargar cada 10s para actualizaciones en tiempo real
+      setInterval(async () => {
+        console.log('🔄 Actualizando datos automáticamente...');
+        await cargarDatos();
+      }, 10000);
+
+      // Escuchar cambios de visibilidad de la página
+      document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden) {
+          console.log('👁️ Página visible - actualizando datos...');
+          await cargarDatos();
+        }
+      });
+    } catch (error) {
+      console.error('Error inicializando dashboard:', error);
+    }
   });
 
   async function cargarDatos() {
