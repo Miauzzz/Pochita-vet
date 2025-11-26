@@ -47,7 +47,6 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
         <!-- Sección Calendario de Disponibilidad -->
         <Card padding="md">
           <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-            <span class="text-xl">📅</span>
             <h2 class="text-lg font-bold text-gray-900">Agendar Cita</h2>
           </div>
           <CalendarioDisponibilidad />
@@ -56,7 +55,6 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
         <!-- Sección Gestión de Citas -->
         <Card padding="md">
           <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-            <span class="text-xl">📋</span>
             <h2 class="text-lg font-bold text-gray-900">Gestión de Citas</h2>
           </div>
 
@@ -89,7 +87,6 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
         <!-- Notificaciones del Sistema -->
         <Card padding="sm" class="sticky top-4">
           <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-            <span class="text-base">🔔</span>
             <h2 class="text-sm font-bold text-gray-900">Notificaciones</h2>
             <span id="badge-notificaciones" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
           </div>
@@ -114,6 +111,7 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
 </BaseDashboard>
 
 <script>
+  //@ts-nocheck
   import { loadSession } from '../../lib/authHelpers.js';
   import { CitasAPI } from '../../lib/api/citas.js';
   import { NotificacionesAPI } from '../../lib/api/notificaciones.js';
@@ -240,12 +238,24 @@ import CalendarioDisponibilidad from '../../components/dashboard/recepcionista/C
                 </span>
               </div>
               
-              <div class="text-sm text-gray-600 space-y-1">
-                <p>🐾 ${c.paciente?.nombre || '(Sin mascota)'}</p>
-                <p>👤 ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || c.paciente?.propietario?.email || '(Sin datos)'}</p>
-                <p>👨‍⚕️ Dr. ${c.veterinario?.nombreCompleto || c.veterinario?.username || 'N/A'}</p>
-                ${c.motivo ? `<p class="text-xs text-gray-500 italic">📝 ${c.motivo}</p>` : ''}
-              </div>
+              <section class="flex flex-row justify-between">
+                <div class="text-sm text-gray-600 space-y-1 ">
+                  <p><span class="font-semibold text-orange-500">Paciente :</span> ${c.paciente?.nombre || '(Sin mascota)'}</p>
+                  <p><span class="font-semibold text-orange-500">Propietario :</span> ${c.paciente?.propietario?.nombreCompleto || c.paciente?.propietario?.username || c.paciente?.propietario?.email || '(Sin datos)'}</p>
+                  <p><span class="font-semibold text-orange-500">Atiende :</span> Dr. ${c.veterinario?.nombreCompleto || c.veterinario?.username || 'N/A'}</p>
+                  ${c.motivo ? `<p class="text-xs text-gray-500 italic"><span class="font-semibold text-orange-500">Motivo :</span> ${c.motivo}</p>` : ''}
+                </div>
+                  
+
+                <div class="text-sm text-gray-600 space-y-1 ml-6">
+                  
+                  <p class="text-sm text-gray-600 space-y-1 ">
+                    <p><span class="font-semibold text-orange-500">Especie :</span> ${c.paciente?.especie || 'N/A'}</p>
+                    <p><span class="font-semibold text-orange-500">Raza :</span> ${c.paciente?.raza || 'N/A'}</p>
+                    <p><span class="font-semibold text-orange-500">Sexo :</span> ${c.paciente?.sexo || 'N/A'}</p>
+                    <p><span class="font-semibold text-orange-500">Peso :</span> ${c.paciente?.peso || 'N/A'}</p>
+                </div>
+              </section>
             </div>
           </div>
 
