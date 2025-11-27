@@ -188,14 +188,31 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
       return ctx.badRequest('Nombre y correo son requeridos');
     }
 
+    // Validar formato de email básico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+      return ctx.badRequest('El formato del correo electrónico no es válido');
+    }
+
     try {
-      // 1. Verificar si el correo ya existe
-      const existingUser = await strapi.query('plugin::users-permissions.user').findOne({
+      // 1. Verificar si el correo ya existe en users-permissions
+      const existingAuthUser = await strapi.query('plugin::users-permissions.user').findOne({
         where: { email: correo.toLowerCase() }
       });
 
-      if (existingUser) {
-        return ctx.badRequest('El correo ya está registrado');
+      if (existingAuthUser) {
+        console.log('❌ Correo ya existe en users-permissions:', correo);
+        return ctx.badRequest('El correo ya está registrado en el sistema');
+      }
+
+      // 2. Verificar también en la colección usuarios (por seguridad adicional)
+      const existingUsuario = await strapi.query('api::usuario.usuario').findOne({
+        where: { correo: correo.toLowerCase() }
+      });
+
+      if (existingUsuario) {
+        console.log('❌ Correo ya existe en colección usuarios:', correo);
+        return ctx.badRequest('El correo ya está registrado como cliente');
       }
 
       // 2. Obtener rol "Authenticated" (Cliente)
@@ -242,10 +259,15 @@ export default factories.createCoreController('api::usuario.usuario', ({ strapi 
 
       console.log('✅ Cliente creado exitosamente');
       console.log('🔗 Link:', activationLink);
+      console.log('📋 Usuario documentId:', nuevoUsuario.documentId);
+      console.log('📋 User ID (auth):', newUser.id);
 
       return ctx.send({
         message: 'Cliente creado exitosamente',
-        usuario: nuevoUsuario,
+        usuario: {
+          ...nuevoUsuario,
+          userId: newUser.id, // Incluir el userId de auth para referencia
+        },
         activationLink: activationLink
       });
 

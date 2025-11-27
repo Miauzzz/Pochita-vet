@@ -10,12 +10,12 @@ import Input from "../../components/ui/Input.astro";
 import Select from "../../components/ui/Select.astro";
 ---
 
-<!-- Script de verificación ANTES de renderizar contenido -->
+<!-- Script de verificaciÃ³n ANTES de renderizar contenido -->
 <script define:vars={{ strapiUrl: import.meta.env.PUBLIC_STRAPI_URL }}>
   window.STRAPI_URL = strapiUrl;
 </script>
 <script is:inline>
-  // Verificar autenticación inmediatamente antes de mostrar la página
+  // Verificar autenticaciÃ³n inmediatamente antes de mostrar la pÃ¡gina
   (function () {
     const jwt = localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
     const appUserStr =
@@ -63,7 +63,7 @@ import Select from "../../components/ui/Select.astro";
           </button>
           <button
             @click="$dispatch('open-search-client-modal')"
-            class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1 ml-2"
+            class="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1 ml-2"
           >
             <span class="text-lg leading-none">+</span> Registrar Mascota
           </button>
@@ -71,7 +71,7 @@ import Select from "../../components/ui/Select.astro";
         <CalendarioDisponibilidad />
       </Card>
 
-      <!-- Sección Gestión de Citas -->
+      <!-- SecciÃ³n GestiÃ³n de Citas -->
       <Card padding="md">
         <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
           <h2 class="text-lg font-bold text-gray-900">Gestión de Citas</h2>
@@ -270,6 +270,10 @@ import Select from "../../components/ui/Select.astro";
                     <option value="">Seleccionar...</option>
                     <option value="Perro">Perro</option>
                     <option value="Gato">Gato</option>
+                    <option value="Ave">Ave</option>
+                    <option value="Conejo">Conejo</option>
+                    <option value="Roedor">Roedor</option>
+                    <option value="Reptil">Reptil</option>
                     <option value="Otro">Otro</option>
                   </select>
                 </div>
@@ -296,6 +300,7 @@ import Select from "../../components/ui/Select.astro";
                     <option value="">Seleccionar...</option>
                     <option value="Macho">Macho</option>
                     <option value="Hembra">Hembra</option>
+                    <option value="Sin determinar">Sin determinar</option>
                   </select>
                 </div>
                 <div>
@@ -306,11 +311,24 @@ import Select from "../../components/ui/Select.astro";
                     x-model="form.peso"
                     type="number"
                     step="0.1"
+                    min="0"
+                    max="1000"
                     class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Ej: 10.5"
                   />
                 </div>
                 <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Color</label
+                  >
+                  <input
+                    x-model="form.color"
+                    type="text"
+                    class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Ej: Café, Negro, Blanco"
+                  />
+                </div>
+                <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1"
                     >Fecha Nacimiento (Aprox)</label
                   >
@@ -443,68 +461,68 @@ import Select from "../../components/ui/Select.astro";
         </div>
       </div>
     </div>
-  </div>
-  <!-- Modal Buscar Cliente -->
-  <div x-data="clientSearch()" @open-search-client-modal.window="openSearch()">
-    <div
-      x-show="showSearch"
-      x-cloak
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      x-transition
-    >
+    <!-- Modal Buscar Cliente -->
+    <div @open-search-client-modal.window="openSearch()">
       <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
-        @click.outside="closeSearch()"
+        x-show="showSearch"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        x-transition
+        @click.self="closeSearch()"
       >
-        <div class="p-6">
-          <h3 class="text-lg font-bold text-gray-900 mb-4">Buscar Cliente</h3>
+        <div
+          class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
+        >
+          <div class="p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Buscar Cliente</h3>
 
-          <div class="flex gap-2 mb-4">
-            <input
-              type="text"
-              x-model="searchTerm"
-              @keyup.enter="search()"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Nombre o correo..."
-            />
-            <button
-              @click="search()"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              :disabled="loading"
-            >
-              <span x-show="!loading">Buscar</span>
-              <span x-show="loading">...</span>
-            </button>
-          </div>
-
-          <!-- Resultados -->
-          <div class="max-h-60 overflow-y-auto space-y-2">
-            <template x-for="client in results" :key="client.id">
-              <div
-                class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center"
-                @click="selectClient(client)"
+            <div class="flex gap-2 mb-4">
+              <input
+                type="text"
+                x-model="searchTerm"
+                @keyup.enter="search()"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                placeholder="Nombre o correo..."
+              />
+              <button
+                @click="search()"
+                class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                :disabled="loading"
               >
-                <div>
-                  <p class="font-medium text-gray-900" x-text="client.nombre">
-                  </p>
-                  <p class="text-sm text-gray-500" x-text="client.correo"></p>
-                </div>
-                <span class="text-blue-600 text-sm">Seleccionar →</span>
-              </div>
-            </template>
-            <div
-              x-show="results.length === 0 && searched"
-              class="text-center text-gray-500 py-4"
-            >
-              No se encontraron clientes
+                <span x-show="!loading">Buscar</span>
+                <span x-show="loading">...</span>
+              </button>
             </div>
-          </div>
 
-          <div class="mt-4 flex justify-end">
-            <button
-              @click="closeSearch()"
-              class="text-gray-500 hover:text-gray-700">Cancelar</button
-            >
+            <!-- Resultados -->
+            <div class="max-h-60 overflow-y-auto space-y-2">
+              <template x-for="client in results" :key="client.id">
+                <div
+                  class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+                  @click="selectClient(client)"
+                >
+                  <div>
+                    <p class="font-medium text-gray-900" x-text="client.nombre">
+                    </p>
+                    <p class="text-sm text-gray-500" x-text="client.correo"></p>
+                  </div>
+                  <span class="text-orange-600 text-sm">Seleccionar →</span>
+                </div>
+              </template>
+              <div
+                x-show="results.length === 0 && searched"
+                class="text-center text-gray-500 py-4"
+              >
+                No se encontraron clientes
+              </div>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+              <button
+                @click="closeSearch()"
+                class="text-gray-500 hover:text-gray-700">Cancelar</button
+              >
+            </div>
           </div>
         </div>
       </div>
@@ -516,41 +534,45 @@ import Select from "../../components/ui/Select.astro";
       x-cloak
       class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       x-transition
+      @click.self="closePetForm()"
     >
-      <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6"
-        @click.outside="closePetForm()"
-      >
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
         <h3 class="text-lg font-bold text-gray-900 mb-4">
           Agregar Mascota a <span
             x-text="selectedClient?.nombre"
-            class="text-blue-600"></span>
+            class="text-orange-600"></span>
         </h3>
 
         <form @submit.prevent="submitPet" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Nombre</label
+                >Nombre <span class="text-red-500">*</span></label
               >
               <input
                 x-model="petForm.nombre"
                 type="text"
                 required
-                class="w-full px-3 py-2 border rounded-lg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Ej: Firulais"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Especie</label
+                >Especie <span class="text-red-500">*</span></label
               >
               <select
                 x-model="petForm.especie"
                 required
-                class="w-full px-3 py-2 border rounded-lg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
+                <option value="">Seleccionar...</option>
                 <option value="Perro">Perro</option>
                 <option value="Gato">Gato</option>
+                <option value="Ave">Ave</option>
+                <option value="Conejo">Conejo</option>
+                <option value="Roedor">Roedor</option>
+                <option value="Reptil">Reptil</option>
                 <option value="Otro">Otro</option>
               </select>
             </div>
@@ -561,20 +583,23 @@ import Select from "../../components/ui/Select.astro";
               <input
                 x-model="petForm.raza"
                 type="text"
-                class="w-full px-3 py-2 border rounded-lg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Ej: Golden Retriever"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Sexo</label
+                >Sexo <span class="text-red-500">*</span></label
               >
               <select
                 x-model="petForm.sexo"
                 required
-                class="w-full px-3 py-2 border rounded-lg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
+                <option value="">Seleccionar...</option>
                 <option value="Macho">Macho</option>
                 <option value="Hembra">Hembra</option>
+                <option value="Sin determinar">Sin determinar</option>
               </select>
             </div>
             <div>
@@ -585,171 +610,183 @@ import Select from "../../components/ui/Select.astro";
                 x-model="petForm.peso"
                 type="number"
                 step="0.1"
-                class="w-full px-3 py-2 border rounded-lg"
+                min="0"
+                max="1000"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Ej: 10.5"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Fecha Nac.</label
+                >Color</label
+              >
+              <input
+                x-model="petForm.color"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Ej: Café, Negro, Blanco"
+              />
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Fecha de Nacimiento (Aprox)</label
               >
               <input
                 x-model="petForm.fecha_nacimiento"
                 type="date"
-                class="w-full px-3 py-2 border rounded-lg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
           </div>
 
-          <div class="flex justify-end gap-3 mt-6">
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
             <button
               type="button"
               @click="closePetForm()"
-              class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
               >Cancelar</button
             >
             <button
               type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="loading"
             >
-              <span x-show="loading">Guardando...</span>
-              <span x-show="!loading">Guardar Mascota</span>
+              <span x-show="loading" class="animate-spin">↻</span>
+              <span x-text="loading ? 'Guardando...' : 'Guardar Mascota'"></span>
             </button>
           </div>
         </form>
       </div>
     </div>
-  </div>
-</BaseDashboard>
 
-<script>
-  //@ts-nocheck
-  import { loadSession, requireRole } from "../../lib/authHelpers.js";
-  import { CitasAPI } from "../../lib/api/citas.js";
-  import { NotificacionesAPI } from "../../lib/api/notificaciones.js";
-  import { UsuariosAPI } from "../../lib/api/usuarios.js";
-  import { PacientesAPI } from "../../lib/api/pacientes.js";
+    <script>
+      //@ts-nocheck
+      import { loadSession, requireRole } from "../../lib/authHelpers.js";
+      import { CitasAPI } from "../../lib/api/citas.js";
+      import { NotificacionesAPI } from "../../lib/api/notificaciones.js";
+      import { UsuariosAPI } from "../../lib/api/usuarios.js";
+      import { PacientesAPI } from "../../lib/api/pacientes.js";
 
-  // Expose APIs to window for AlpineJS
-  window.UsuariosAPI = UsuariosAPI;
-  window.PacientesAPI = PacientesAPI;
-  window.loadSession = loadSession;
+      // Expose APIs to window for AlpineJS
+      window.UsuariosAPI = UsuariosAPI;
+      window.PacientesAPI = PacientesAPI;
+      window.loadSession = loadSession;
 
-  let session, citasAPI, notificacionesAPI, usuariosAPI, pacientesAPI;
-  let citasData = [];
-  let notificacionesData = [];
-  let filtroActual = "todas";
+      let session, citasAPI, notificacionesAPI, usuariosAPI, pacientesAPI;
+      let citasData = [];
+      let notificacionesData = [];
+      let filtroActual = "todas";
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    try {
-      session = loadSession();
-      if (!session?.jwt) {
-        window.location.href = "/login";
-        return;
-      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          session = loadSession();
+          if (!session?.jwt) {
+            window.location.href = "/login";
+            return;
+          }
 
-      citasAPI = new CitasAPI(session.jwt);
-      notificacionesAPI = new NotificacionesAPI(session.jwt);
-      usuariosAPI = new UsuariosAPI(session.jwt);
-      pacientesAPI = new PacientesAPI(session.jwt);
+          citasAPI = new CitasAPI(session.jwt);
+          notificacionesAPI = new NotificacionesAPI(session.jwt);
+          usuariosAPI = new UsuariosAPI(session.jwt);
+          pacientesAPI = new PacientesAPI(session.jwt);
 
-      await cargarDatos();
-      setupEventos();
-
-      // Recargar cada 10s para actualizaciones en tiempo real
-      setInterval(async () => {
-        console.log("🔄 Actualizando datos automáticamente...");
-        await cargarDatos();
-      }, 10000);
-
-      // Escuchar cambios de visibilidad de la página
-      document.addEventListener("visibilitychange", async () => {
-        if (!document.hidden) {
-          console.log("👁️ Página visible - actualizando datos...");
           await cargarDatos();
+          setupEventos();
+
+          // Recargar cada 10s para actualizaciones en tiempo real
+          setInterval(async () => {
+            console.log("🔄 Actualizando datos automáticamente...");
+            await cargarDatos();
+          }, 10000);
+
+          // Escuchar cambios de visibilidad de la página
+          document.addEventListener("visibilitychange", async () => {
+            if (!document.hidden) {
+              console.log("👁️ Página visible - actualizando datos...");
+              await cargarDatos();
+            }
+          });
+        } catch (error) {
+          console.error("Error inicializando dashboard:", error);
         }
       });
-    } catch (error) {
-      console.error("Error inicializando dashboard:", error);
-    }
-  });
 
-  async function cargarDatos() {
-    await Promise.all([cargarCitas(), cargarNotificaciones()]);
-  }
+      async function cargarDatos() {
+        await Promise.all([cargarCitas(), cargarNotificaciones()]);
+      }
 
-  async function cargarCitas() {
-    try {
-      citasData = await citasAPI.getMisCitas();
-      renderCitas();
-    } catch (error) {
-      console.error("Error cargando citas:", error);
-      document.getElementById("citas-container").innerHTML = `
+      async function cargarCitas() {
+        try {
+          citasData = await citasAPI.getMisCitas();
+          renderCitas();
+        } catch (error) {
+          console.error("Error cargando citas:", error);
+          document.getElementById("citas-container").innerHTML = `
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
           <p class="text-center text-red-600 text-sm font-medium">Error al cargar citas</p>
           <p class="text-center text-red-500 text-xs mt-1">${error.message}</p>
         </div>
       `;
-    }
-  }
+        }
+      }
 
-  async function cargarNotificaciones() {
-    try {
-      notificacionesData = await notificacionesAPI.getMisNotificaciones();
-      console.log("✅ Notificaciones cargadas:", notificacionesData.length);
-      renderNotificacionesSistema();
-    } catch (error) {
-      console.error("❌ Error cargando notificaciones:", error);
-      // Mostrar mensaje solo si no es el primer intento (evita mostrar error en carga inicial)
-      const container = document.getElementById(
-        "notificaciones-sistema-container",
-      );
-      if (container && notificacionesData.length === 0) {
-        container.innerHTML = `
+      async function cargarNotificaciones() {
+        try {
+          notificacionesData = await notificacionesAPI.getMisNotificaciones();
+          console.log("✅ Notificaciones cargadas:", notificacionesData.length);
+          renderNotificacionesSistema();
+        } catch (error) {
+          console.error("❌ Error cargando notificaciones:", error);
+          // Mostrar mensaje solo si no es el primer intento (evita mostrar error en carga inicial)
+          const container = document.getElementById(
+            "notificaciones-sistema-container",
+          );
+          if (container && notificacionesData.length === 0) {
+            container.innerHTML = `
           <p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>
         `;
+          }
+        }
       }
-    }
-  }
 
-  function renderCitas() {
-    const container = document.getElementById("citas-container");
-    let citasFiltradas =
-      filtroActual === "todas"
-        ? citasData
-        : citasData.filter((c) => c.estado === filtroActual);
+      function renderCitas() {
+        const container = document.getElementById("citas-container");
+        let citasFiltradas =
+          filtroActual === "todas"
+            ? citasData
+            : citasData.filter((c) => c.estado === filtroActual);
 
-    // Ordenar por fecha y hora (más próximas primero)
-    citasFiltradas = citasFiltradas.sort((a, b) => {
-      const fechaA = new Date(a.fecha + "T" + (a.hora || "00:00:00"));
-      const fechaB = new Date(b.fecha + "T" + (b.hora || "00:00:00"));
-      return fechaA - fechaB;
-    });
+        // Ordenar por fecha y hora (más próximas primero)
+        citasFiltradas = citasFiltradas.sort((a, b) => {
+          const fechaA = new Date(a.fecha + "T" + (a.hora || "00:00:00"));
+          const fechaB = new Date(b.fecha + "T" + (b.hora || "00:00:00"));
+          return fechaA - fechaB;
+        });
 
-    if (citasFiltradas.length === 0) {
-      container.innerHTML = `
+        if (citasFiltradas.length === 0) {
+          container.innerHTML = `
         <div class="text-center py-8 text-gray-500 text-sm">
           No hay citas ${filtroActual === "todas" ? "" : filtroActual + "s"}
         </div>
       `;
-      return;
-    }
+          return;
+        }
 
-    container.innerHTML = citasFiltradas
-      .map((c) => {
-        const estadoClasses = {
-          pendiente: "bg-yellow-100 text-yellow-800 border-yellow-200",
-          confirmada: "bg-green-100 text-green-800 border-green-200",
-          cancelada: "bg-red-100 text-red-800 border-red-200",
-        };
+        container.innerHTML = citasFiltradas
+          .map((c) => {
+            const estadoClasses = {
+              pendiente: "bg-yellow-100 text-yellow-800 border-yellow-200",
+              confirmada: "bg-green-100 text-green-800 border-green-200",
+              cancelada: "bg-red-100 text-red-800 border-red-200",
+            };
 
-        const estadoTextos = {
-          pendiente: "Pendiente",
-          confirmada: "Confirmada",
-          cancelada: "Cancelada",
-        };
+            const estadoTextos = {
+              pendiente: "Pendiente",
+              confirmada: "Confirmada",
+              cancelada: "Cancelada",
+            };
 
-        return `
+            return `
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 transition-all" data-cita-id="${c.id}">
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1">
@@ -812,67 +849,67 @@ import Select from "../../components/ui/Select.astro";
           }
         </div>
       `;
-      })
-      .join("");
-  }
+          })
+          .join("");
+      }
 
-  function renderNotificacionesSistema() {
-    const container = document.getElementById(
-      "notificaciones-sistema-container",
-    );
-    const noLeidas = notificacionesData.filter((n) => !n.leida);
+      function renderNotificacionesSistema() {
+        const container = document.getElementById(
+          "notificaciones-sistema-container",
+        );
+        const noLeidas = notificacionesData.filter((n) => !n.leida);
 
-    document.getElementById("badge-notificaciones").textContent =
-      noLeidas.length;
+        document.getElementById("badge-notificaciones").textContent =
+          noLeidas.length;
 
-    const btnMarcarLeidas = document.getElementById("btn-marcar-leidas");
-    if (noLeidas.length > 0) {
-      btnMarcarLeidas.style.display = "block";
-    } else {
-      btnMarcarLeidas.style.display = "none";
-    }
+        const btnMarcarLeidas = document.getElementById("btn-marcar-leidas");
+        if (noLeidas.length > 0) {
+          btnMarcarLeidas.style.display = "block";
+        } else {
+          btnMarcarLeidas.style.display = "none";
+        }
 
-    if (notificacionesData.length === 0) {
-      container.innerHTML =
-        '<p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>';
-      return;
-    }
+        if (notificacionesData.length === 0) {
+          container.innerHTML =
+            '<p class="text-xs text-gray-500 text-center py-4">Sin notificaciones</p>';
+          return;
+        }
 
-    const iconosPorTipo = {
-      cancelacion: "🚫",
-      recordatorio: "⏰",
-      general: "🔔",
-      confirmacion: "✅",
-      default: "📋",
-    };
+        const iconosPorTipo = {
+          cancelacion: "🚫",
+          recordatorio: "⏰",
+          general: "🔔",
+          confirmacion: "✅",
+          default: "📋",
+        };
 
-    container.innerHTML = notificacionesData
-      .slice(0, 15)
-      .map((n) => {
-        const icono = iconosPorTipo[n.tipo] || iconosPorTipo.default;
-        const bgClass = n.leida
-          ? "bg-gray-50 border-gray-200"
-          : "bg-blue-50 border-blue-200";
-        const fontClass = n.leida
-          ? "text-gray-600"
-          : "text-gray-900 font-medium";
+        container.innerHTML = notificacionesData
+          .slice(0, 15)
+          .map((n) => {
+            const icono = iconosPorTipo[n.tipo] || iconosPorTipo.default;
+            const bgClass = n.leida
+              ? "bg-gray-50 border-gray-200"
+              : "bg-blue-50 border-blue-200";
+            const fontClass = n.leida
+              ? "text-gray-600"
+              : "text-gray-900 font-medium";
 
-        const fechaFormateada = new Date(
-          n.fecha_notificacion,
-        ).toLocaleDateString("es-CL", {
-          day: "2-digit",
-          month: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+            const fechaFormateada = new Date(
+              n.fecha_notificacion,
+            ).toLocaleDateString("es-CL", {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
 
-        // Obtener ID de cita relacionada si existe
-        const citaId = n.cita_relacionada?.id || null;
-        const clickHandler = citaId
-          ? `onclick="scrollYMarcarLeida(${n.id}, ${citaId})"`
-          : `onclick="marcarNotificacionLeida(${n.id})"`;
+            // Obtener ID de cita relacionada si existe
+            const citaId = n.cita_relacionada?.id || null;
+            const clickHandler = citaId
+              ? `onclick="scrollYMarcarLeida(${n.id}, ${citaId})"`
+              : `onclick="marcarNotificacionLeida(${n.id})"`;
 
-        return `
+            return `
         <div 
           class="${bgClass} border rounded-lg p-3 text-xs hover:shadow-sm transition-shadow cursor-pointer"
           ${clickHandler}
@@ -887,246 +924,239 @@ import Select from "../../components/ui/Select.astro";
           </div>
         </div>
       `;
-      })
-      .join("");
-  }
+          })
+          .join("");
+      }
 
-  function setupEventos() {
-    document.querySelectorAll("[data-filter]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        console.log("🔘 Filtro clickeado:", btn.dataset.filter);
+      function setupEventos() {
+        document.querySelectorAll("[data-filter]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            console.log("🔘 Filtro clickeado:", btn.dataset.filter);
 
-        // Remover estilo activo de todos los botones
-        document.querySelectorAll("[data-filter]").forEach((b) => {
-          b.classList.remove(
-            "bg-orange-500",
-            "text-white",
-            "hover:bg-orange-600",
-          );
-          b.classList.add("bg-gray-100", "text-gray-700", "hover:bg-gray-200");
+            // Remover estilo activo de todos los botones
+            document.querySelectorAll("[data-filter]").forEach((b) => {
+              b.classList.remove(
+                "bg-orange-500",
+                "text-white",
+                "hover:bg-orange-600",
+              );
+              b.classList.add(
+                "bg-gray-100",
+                "text-gray-700",
+                "hover:bg-gray-200",
+              );
+            });
+
+            // Aplicar estilo activo al botón clickeado
+            btn.classList.remove(
+              "bg-gray-100",
+              "text-gray-700",
+              "hover:bg-gray-200",
+            );
+            btn.classList.add(
+              "bg-orange-500",
+              "text-white",
+              "hover:bg-orange-600",
+            );
+
+            filtroActual = btn.dataset.filter;
+            console.log("🛠️ Filtro aplicado:", filtroActual);
+            renderCitas();
+          });
         });
 
-        // Aplicar estilo activo al botón clickeado
-        btn.classList.remove(
-          "bg-gray-100",
-          "text-gray-700",
-          "hover:bg-gray-200",
-        );
-        btn.classList.add("bg-orange-500", "text-white", "hover:bg-orange-600");
+        // Botón marcar todas como leídas
+        document
+          .getElementById("btn-marcar-leidas")
+          .addEventListener("click", async () => {
+            try {
+              await notificacionesAPI.marcarTodasLeidas();
+              await cargarNotificaciones();
+            } catch (error) {
+              console.error("Error marcando notificaciones:", error);
+            }
+          });
+      }
 
-        filtroActual = btn.dataset.filter;
-        console.log("🛠️ Filtro aplicado:", filtroActual);
-        renderCitas();
-      });
-    });
-
-    // Botón marcar todas como leídas
-    document
-      .getElementById("btn-marcar-leidas")
-      .addEventListener("click", async () => {
+      window.marcarNotificacionLeida = async (notificacionId) => {
         try {
-          await notificacionesAPI.marcarTodasLeidas();
+          await notificacionesAPI.marcarLeida(notificacionId);
           await cargarNotificaciones();
         } catch (error) {
-          console.error("Error marcando notificaciones:", error);
+          console.error("Error marcando notificación:", error);
         }
-      });
-  }
+      };
 
-  window.marcarNotificacionLeida = async (notificacionId) => {
-    try {
-      await notificacionesAPI.marcarLeida(notificacionId);
-      await cargarNotificaciones();
-    } catch (error) {
-      console.error("Error marcando notificación:", error);
-    }
-  };
+      window.scrollYMarcarLeida = async (notificacionId, citaId) => {
+        console.log("🎯 scrollYMarcarLeida llamado con:", {
+          notificacionId,
+          citaId,
+        });
 
-  window.scrollYMarcarLeida = async (notificacionId, citaId) => {
-    console.log("🎯 scrollYMarcarLeida llamado con:", {
-      notificacionId,
-      citaId,
-    });
+        // Marcar como leída
+        try {
+          await notificacionesAPI.marcarLeida(notificacionId);
+          await cargarNotificaciones();
+        } catch (error) {
+          console.error("Error marcando notificación:", error);
+        }
 
-    // Marcar como leída
-    try {
-      await notificacionesAPI.marcarLeida(notificacionId);
-      await cargarNotificaciones();
-    } catch (error) {
-      console.error("Error marcando notificación:", error);
-    }
+        console.log("📊 citasData disponible:", citasData);
 
-    console.log("📊 citasData disponible:", citasData);
+        // Buscar la cita por ID en el array de datos
+        const cita = citasData.find((c) => c.id === citaId);
+        console.log("🔍 Cita encontrada:", cita);
 
-    // Buscar la cita por ID en el array de datos
-    const cita = citasData.find((c) => c.id === citaId);
-    console.log("🔍 Cita encontrada:", cita);
+        if (!cita) {
+          console.log("❌ Cita no encontrada en los datos actuales");
+          return;
+        }
 
-    if (!cita) {
-      console.log("❌ Cita no encontrada en los datos actuales");
-      return;
-    }
-
-    // Buscar el elemento en el DOM por data-cita-id
-    setTimeout(() => {
-      const citaElemento = document.querySelector(`[data-cita-id="${citaId}"]`);
-      console.log("🎨 Elemento DOM encontrado:", citaElemento);
-
-      if (citaElemento) {
-        console.log("✅ Haciendo scroll al elemento");
-        citaElemento.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Destacar brevemente la cita
-        citaElemento.classList.add(
-          "ring-4",
-          "ring-orange-300",
-          "ring-offset-2",
-        );
+        // Buscar el elemento en el DOM por data-cita-id
         setTimeout(() => {
-          citaElemento.classList.remove(
-            "ring-4",
-            "ring-orange-300",
-            "ring-offset-2",
+          const citaElemento = document.querySelector(
+            `[data-cita-id="${citaId}"]`,
           );
-        }, 2500);
-      } else {
-        console.log("⚠️ Elemento no visible, intentando cambiar filtro");
-        // Si no está visible, cambiar filtro para mostrarla
-        const filtroBtn = document.querySelector(
-          `[data-filter="${cita.estado}"]`,
-        );
-        console.log(
-          "🔘 Botón filtro encontrado:",
-          filtroBtn,
-          "para estado:",
-          cita.estado,
-        );
+          console.log("🎨 Elemento DOM encontrado:", citaElemento);
 
-        if (filtroBtn) {
-          filtroBtn.click();
-          setTimeout(() => {
-            const elem = document.querySelector(`[data-cita-id="${citaId}"]`);
-            console.log("🔄 Elemento después de cambiar filtro:", elem);
+          if (citaElemento) {
+            console.log("✅ Haciendo scroll al elemento");
+            citaElemento.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            // Destacar brevemente la cita
+            citaElemento.classList.add(
+              "ring-4",
+              "ring-orange-300",
+              "ring-offset-2",
+            );
+            setTimeout(() => {
+              citaElemento.classList.remove(
+                "ring-4",
+                "ring-orange-300",
+                "ring-offset-2",
+              );
+            }, 2500);
+          } else {
+            console.log("⚠️ Elemento no visible, intentando cambiar filtro");
+            // Si no está visible, cambiar filtro para mostrarla
+            const filtroBtn = document.querySelector(
+              `[data-filter="${cita.estado}"]`,
+            );
+            console.log(
+              "🔘 Botón filtro encontrado:",
+              filtroBtn,
+              "para estado:",
+              cita.estado,
+            );
 
-            if (elem) {
-              elem.scrollIntoView({ behavior: "smooth", block: "center" });
-              elem.classList.add("ring-4", "ring-orange-300", "ring-offset-2");
+            if (filtroBtn) {
+              filtroBtn.click();
               setTimeout(() => {
-                elem.classList.remove(
-                  "ring-4",
-                  "ring-orange-300",
-                  "ring-offset-2",
+                const elem = document.querySelector(
+                  `[data-cita-id="${citaId}"]`,
                 );
-              }, 2500);
+                console.log("🔄 Elemento después de cambiar filtro:", elem);
+
+                if (elem) {
+                  elem.scrollIntoView({ behavior: "smooth", block: "center" });
+                  elem.classList.add(
+                    "ring-4",
+                    "ring-orange-300",
+                    "ring-offset-2",
+                  );
+                  setTimeout(() => {
+                    elem.classList.remove(
+                      "ring-4",
+                      "ring-orange-300",
+                      "ring-offset-2",
+                    );
+                  }, 2500);
+                }
+              }, 300);
             }
-          }, 300);
+          }
+        }, 100);
+      };
+
+      window.confirmarCita = async (documentId) => {
+        if (!confirm("¿Confirmar esta cita?")) return;
+
+        try {
+          await citasAPI.confirmarCita(documentId);
+          await cargarCitas();
+          alert("✅ Cita confirmada");
+        } catch (error) {
+          console.error("Error confirmando cita:", error);
+          alert("❌ Error: " + error.message);
         }
+      };
+
+      window.rechazarCita = async (documentId) => {
+        if (!confirm("¿Rechazar esta cita?")) return;
+
+        try {
+          await citasAPI.cancelarCita(documentId);
+          await cargarCitas();
+          alert("❌ Cita rechazada");
+        } catch (error) {
+          console.error("Error rechazando cita:", error);
+          alert("❌ Error: " + error.message);
+        }
+      };
+
+      window.cancelarCita = async (documentId) => {
+        if (!confirm("¿Cancelar esta cita?")) return;
+
+        try {
+          await citasAPI.cancelarCita(documentId);
+          await cargarCitas();
+          alert("🚫 Cita cancelada");
+        } catch (error) {
+          console.error("Error cancelando cita:", error);
+          alert("❌ Error: " + error.message);
+        }
+      };
+
+      window.scrollToCita = (id) => {
+        const filtroBtn = document.querySelector('[data-filter="pendiente"]');
+        if (filtroBtn) filtroBtn.click();
+        setTimeout(() => {
+          window.scrollTo({ top: 200, behavior: "smooth" });
+        }, 100);
+      };
+
+      function formatearFecha(fecha) {
+        return new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
       }
-    }, 100);
-  };
 
-  window.confirmarCita = async (documentId) => {
-    if (!confirm("¿Confirmar esta cita?")) return;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", async () => {
+          console.log("DOM listo, ejecutando requireRole para recepcionista");
+          await requireRole(["recepcionista"]);
+        });
+      } else {
+        console.log("DOM ya listo, ejecutando requireRole para recepcionista");
+        await requireRole(["recepcionista"]);
+      }
+    </script>
+  </div>
 
-    try {
-      await citasAPI.confirmarCita(documentId);
-      await cargarCitas();
-      alert("✅ Cita confirmada");
-    } catch (error) {
-      console.error("Error confirmando cita:", error);
-      alert("❌ Error: " + error.message);
-    }
-  };
-
-  window.rechazarCita = async (documentId) => {
-    if (!confirm("¿Rechazar esta cita?")) return;
-
-    try {
-      await citasAPI.cancelarCita(documentId);
-      await cargarCitas();
-      alert("❌ Cita rechazada");
-    } catch (error) {
-      console.error("Error rechazando cita:", error);
-      alert("❌ Error: " + error.message);
-    }
-  };
-
-  window.cancelarCita = async (documentId) => {
-    if (!confirm("¿Cancelar esta cita?")) return;
-
-    try {
-      await citasAPI.cancelarCita(documentId);
-      await cargarCitas();
-      alert("🚫 Cita cancelada");
-    } catch (error) {
-      console.error("Error cancelando cita:", error);
-      alert("❌ Error: " + error.message);
-    }
-  };
-
-  window.scrollToCita = (id) => {
-    const filtroBtn = document.querySelector('[data-filter="pendiente"]');
-    if (filtroBtn) filtroBtn.click();
-    setTimeout(() => {
-      window.scrollTo({ top: 200, behavior: "smooth" });
-    }, 100);
-  };
-
-  function formatearFecha(fecha) {
-    return new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", async () => {
-      console.log("DOM listo, ejecutando requireRole para recepcionista");
-      await requireRole(["recepcionista"]);
-    });
-  } else {
-    console.log("DOM ya listo, ejecutando requireRole para recepcionista");
-    await requireRole(["recepcionista"]);
-  }
-</script>
-
-<script is:inline>
-  // AlpineJS Data Logic
-  document.addEventListener("alpine:init", () => {
-    Alpine.data("clientRegistration", () => ({
-      showForm: false,
-      showSuccess: false,
-      loading: false,
-      activationLink: "",
-      copied: false,
-      form: {
-        nombre: "",
-        correo: "",
-        telefono: "",
-        nombre_mascota: "",
-        especie: "",
-        raza: "",
-        sexo: "",
-        peso: "",
-        fecha_nacimiento: "",
-      },
-
-      openForm() {
-        this.showForm = true;
-        this.resetForm();
-      },
-
-      closeForm() {
-        this.showForm = false;
-      },
-
-      closeSuccess() {
-        this.showSuccess = false;
-        this.copied = false;
-      },
-
-      resetForm() {
-        this.form = {
+  <script is:inline>
+    // AlpineJS Data Logic
+    document.addEventListener("alpine:init", () => {
+      Alpine.data("clientRegistration", () => ({
+        showForm: false,
+        showSuccess: false,
+        loading: false,
+        activationLink: "",
+        copied: false,
+        form: {
           nombre: "",
           correo: "",
           telefono: "",
@@ -1136,213 +1166,304 @@ import Select from "../../components/ui/Select.astro";
           sexo: "",
           peso: "",
           fecha_nacimiento: "",
-        };
-      },
+          color: "",
+        },
 
-      async submitForm() {
-        this.loading = true;
-        try {
-          // Obtener sesión y APIs desde window (expuestas por el otro script)
-          const session = window.loadSession();
-          if (!session?.jwt) throw new Error("No hay sesión activa");
+        openForm() {
+          this.showForm = true;
+          this.resetForm();
+        },
 
-          const usuariosAPI = new window.UsuariosAPI(session.jwt);
-          const pacientesAPI = new window.PacientesAPI(session.jwt);
-
-          // 1. Crear Usuario (Cliente Presencial)
-          const datosUsuario = {
-            nombre: this.form.nombre,
-            correo: this.form.correo,
-            telefono: this.form.telefono,
-          };
-
-          console.log("📝 Creando cliente presencial:", datosUsuario);
-          const respuestaUsuario =
-            await usuariosAPI.crearClientePresencial(datosUsuario);
-
-          const nuevoUsuario = respuestaUsuario.usuario;
-          this.activationLink = respuestaUsuario.activationLink;
-
-          if (!nuevoUsuario || !nuevoUsuario.documentId) {
-            throw new Error("No se pudo obtener el ID del usuario creado");
-          }
-
-          // 2. Crear Mascota vinculada
-          // El propietario debe ser el ID del usuario de users-permissions (auth), no el del perfil Usuario
-          const userId =
-            typeof nuevoUsuario.user === "object"
-              ? nuevoUsuario.user.id
-              : nuevoUsuario.user;
-
-          const datosMascota = {
-            nombre: this.form.nombre_mascota,
-            especie: this.form.especie,
-            raza: this.form.raza,
-            sexo: this.form.sexo,
-            peso: this.form.peso ? parseFloat(this.form.peso) : null,
-            fecha_nacimiento: this.form.fecha_nacimiento || null,
-            propietario: userId,
-          };
-
-          console.log("🐶 Creando mascota:", datosMascota);
-          await pacientesAPI.crearPaciente(datosMascota);
-
-          // Éxito
+        closeForm() {
           this.showForm = false;
-          this.showSuccess = true;
-        } catch (error) {
-          console.error("Error en registro:", error);
-          alert(
-            "❌ Error al registrar: " + (error.message || "Error desconocido"),
-          );
-        } finally {
-          this.loading = false;
-        }
-      },
+        },
 
-      copyLink() {
-        navigator.clipboard
-          .writeText(this.activationLink)
-          .then(() => {
-            this.copied = true;
-            setTimeout(() => {
-              this.copied = false;
-            }, 2000);
-          })
-          .catch((err) => {
-            console.error("Error al copiar:", err);
+        closeSuccess() {
+          this.showSuccess = false;
+          this.copied = false;
+        },
+
+        resetForm() {
+          this.form = {
+            nombre: "",
+            correo: "",
+            telefono: "",
+            nombre_mascota: "",
+            especie: "",
+            raza: "",
+            sexo: "",
+            peso: "",
+            fecha_nacimiento: "",
+            color: "",
+          };
+        },
+
+        async submitForm() {
+          this.loading = true;
+          try {
+            // Obtener sesión y APIs desde window (expuestas por el otro script)
+            const session = window.loadSession();
+            if (!session?.jwt) throw new Error("No hay sesión activa");
+
+            const usuariosAPI = new window.UsuariosAPI(session.jwt);
+
+            // 1. Crear Usuario (Cliente Presencial)
+            const datosUsuario = {
+              nombre: this.form.nombre,
+              correo: this.form.correo,
+              telefono: this.form.telefono,
+            };
+
+            console.log("📝 Creando cliente presencial:", datosUsuario);
+            const respuestaUsuario =
+              await usuariosAPI.crearClientePresencial(datosUsuario);
+
+            const nuevoUsuario = respuestaUsuario.usuario;
+            this.activationLink = respuestaUsuario.activationLink;
+
+            if (!nuevoUsuario || !nuevoUsuario.documentId) {
+              throw new Error("No se pudo obtener el ID del usuario creado");
+            }
+
+            // 2. Crear Mascota vinculada
+            // Usamos clienteDocumentId y clienteCorreo para que el backend resuelva el propietario
+            const datosMascota = {
+              nombre: this.form.nombre_mascota,
+              especie: this.form.especie,
+              raza: this.form.raza || null,
+              sexo: this.form.sexo,
+              peso: this.form.peso ? parseFloat(this.form.peso) : null,
+              fecha_nacimiento: this.form.fecha_nacimiento || null,
+              color: this.form.color || null,
+              // Enviar documentId y correo para que el backend resuelva el propietario
+              clienteDocumentId: nuevoUsuario.documentId,
+              clienteCorreo: this.form.correo,
+            };
+
+            console.log("🐶 Creando mascota:", datosMascota);
+            
+            // Crear paciente con fetch directo
+            let mascotaCreada = false;
+            let errorMascota = null;
+            
+            try {
+              const response = await fetch(`${window.STRAPI_URL}/api/pacientes`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.jwt}`,
+                },
+                body: JSON.stringify({ data: datosMascota }),
+              });
+
+              const result = await response.json();
+
+              if (!response.ok) {
+                console.error("❌ Error creando mascota:", result);
+                errorMascota = result.error?.message || "Error al crear mascota";
+              } else {
+                console.log("✅ Mascota creada:", result);
+                mascotaCreada = true;
+              }
+            } catch (err) {
+              console.error("❌ Error en petición de mascota:", err);
+              errorMascota = err.message;
+            }
+
+            // Éxito - mostrar modal con link aunque la mascota haya fallado
+            // (el cliente ya fue creado exitosamente)
+            this.showForm = false;
+            this.showSuccess = true;
+            
+            if (!mascotaCreada && errorMascota) {
+              // Avisar que la mascota no se creó pero el cliente sí
+              setTimeout(() => {
+                alert("⚠️ El cliente fue creado pero hubo un error al crear la mascota: " + errorMascota + "\n\nPuede agregar la mascota después usando 'Registrar Mascota'.");
+              }, 500);
+            }
+          } catch (error) {
+            console.error("Error en registro:", error);
             alert(
-              "No se pudo copiar automáticamente. Por favor selecciónalo manualmente.",
+              "❌ Error al registrar: " +
+                (error.message || "Error desconocido"),
             );
-          });
-      },
-    }));
+          } finally {
+            this.loading = false;
+          }
+        },
 
-    Alpine.data("clientSearch", () => ({
-      showSearch: false,
-      showPetForm: false,
-      loading: false,
-      searchTerm: "",
-      results: [],
-      searched: false,
-      selectedClient: null,
-      petForm: {
-        nombre: "",
-        especie: "Perro",
-        raza: "",
-        sexo: "Macho",
-        peso: "",
-        fecha_nacimiento: "",
-      },
+        copyLink() {
+          navigator.clipboard
+            .writeText(this.activationLink)
+            .then(() => {
+              this.copied = true;
+              setTimeout(() => {
+                this.copied = false;
+              }, 2000);
+            })
+            .catch((err) => {
+              console.error("Error al copiar:", err);
+              alert(
+                "No se pudo copiar automáticamente. Por favor selecciónalo manualmente.",
+              );
+            });
+        },
 
-      openSearch() {
-        this.showSearch = true;
-        this.searchTerm = "";
-        this.results = [];
-        this.searched = false;
-      },
-
-      closeSearch() {
-        this.showSearch = false;
-      },
-
-      async search() {
-        if (!this.searchTerm.trim()) return;
-        this.loading = true;
-        this.searched = true;
-        try {
-          const session = window.loadSession();
-          const usuariosAPI = new window.UsuariosAPI(session.jwt);
-          // Implement search in UsuariosAPI or use a direct fetch here for simplicity if API method missing
-          // Assuming we need to add search method to UsuariosAPI or filter client-side if list is small (not recommended)
-          // Let's assume we add searching to UsuariosAPI or use a custom query
-
-          // For now, let's try to fetch all users and filter (temporary, better to add search endpoint)
-          // Or better, use the existing getUsuarios if it supports filters
-          // But getUsuarios might not be exposed.
-
-          // Let's fetch from /api/usuarios?filters[$or][0][nombre][$contains]=term&filters[$or][1][correo][$contains]=term
-          const response = await fetch(
-            `${window.STRAPI_URL}/api/usuarios?filters[$or][0][nombre][$containsi]=${this.searchTerm}&filters[$or][1][correo][$containsi]=${this.searchTerm}&populate=user`,
-            {
-              headers: { Authorization: `Bearer ${session.jwt}` },
-            },
-          );
-          const data = await response.json();
-          this.results = data.data;
-        } catch (error) {
-          console.error("Error searching:", error);
-          alert("Error al buscar clientes");
-        } finally {
-          this.loading = false;
-        }
-      },
-
-      selectClient(client) {
-        this.selectedClient = client;
-        this.showSearch = false;
-        this.showPetForm = true;
-        this.resetPetForm();
-      },
-
-      closePetForm() {
-        this.showPetForm = false;
-        this.selectedClient = null;
-      },
-
-      resetPetForm() {
-        this.petForm = {
+        // --- Logic for Search & Add Pet to Existing Client ---
+        showSearch: false,
+        showPetForm: false,
+        searchTerm: "",
+        results: [],
+        searched: false,
+        selectedClient: null,
+        petForm: {
           nombre: "",
-          especie: "Perro",
+          especie: "",
           raza: "",
-          sexo: "Macho",
+          sexo: "",
           peso: "",
           fecha_nacimiento: "",
-        };
-      },
+          color: "",
+        },
 
-      async submitPet() {
-        if (!this.selectedClient) return;
-        this.loading = true;
-        try {
-          const session = window.loadSession();
-          const pacientesAPI = new window.PacientesAPI(session.jwt);
+        openSearch() {
+          this.showSearch = true;
+          this.searchTerm = "";
+          this.results = [];
+          this.searched = false;
+        },
 
-          // Ensure we have the correct User ID (auth)
-          // The search result 'client' is from 'api::usuario.usuario'
-          // It should have 'user' populated.
-          const userId =
-            this.selectedClient.user?.id || this.selectedClient.user;
+        closeSearch() {
+          this.showSearch = false;
+        },
 
-          if (!userId)
-            throw new Error(
-              "No se pudo obtener el ID de usuario para vincular",
+        async search() {
+          if (!this.searchTerm.trim()) return;
+          this.loading = true;
+          this.searched = true;
+          try {
+            const session = window.loadSession();
+            // Buscar clientes por nombre o correo, filtrar solo tipo cliente, y popular la relación user
+            const searchQuery = encodeURIComponent(this.searchTerm.trim());
+            const response = await fetch(
+              `${window.STRAPI_URL}/api/usuarios?filters[$or][0][nombre][$containsi]=${searchQuery}&filters[$or][1][correo][$containsi]=${searchQuery}&filters[tipo_usuario][$eq]=cliente&populate=user`,
+              {
+                headers: { Authorization: `Bearer ${session.jwt}` },
+              },
+            );
+            const data = await response.json();
+            console.log("🔍 Search results (raw):", data);
+
+            // Deduplicate results based on ID
+            const uniqueResults = (data.data || []).filter(
+              (client, index, self) =>
+                index === self.findIndex((c) => c.id === client.id),
             );
 
-          const datosMascota = {
-            nombre: this.petForm.nombre,
-            especie: this.petForm.especie,
-            raza: this.petForm.raza,
-            sexo: this.petForm.sexo,
-            peso: this.petForm.peso ? parseFloat(this.petForm.peso) : null,
-            fecha_nacimiento: this.petForm.fecha_nacimiento || null,
-            propietario: userId,
+            console.log("🔍 Search results (filtered):", uniqueResults);
+            this.results = uniqueResults;
+          } catch (error) {
+            console.error("Error searching:", error);
+            alert("Error al buscar clientes");
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        selectClient(client) {
+          this.selectedClient = client;
+          this.showSearch = false;
+          this.showPetForm = true;
+          this.resetPetForm();
+        },
+
+        closePetForm() {
+          this.showPetForm = false;
+          this.selectedClient = null;
+        },
+
+        resetPetForm() {
+          this.petForm = {
+            nombre: "",
+            especie: "",
+            raza: "",
+            sexo: "",
+            peso: "",
+            fecha_nacimiento: "",
+            color: "",
           };
+        },
 
-          await pacientesAPI.crearPaciente(datosMascota);
+        async submitPet() {
+          console.log("🐾 submitPet initiated");
+          console.log("👤 Selected Client:", this.selectedClient);
 
-          alert("✅ Mascota agregada exitosamente");
-          this.closePetForm();
+          if (!this.selectedClient) {
+            console.error("❌ No client selected");
+            return;
+          }
 
-          // Refresh dashboard data if needed
-          // window.location.reload(); // Or trigger a refresh event
-        } catch (error) {
-          console.error("Error adding pet:", error);
-          alert("❌ Error al agregar mascota: " + error.message);
-        } finally {
-          this.loading = false;
-        }
-      },
-    }));
-  });
-</script>
+          // Validar campos requeridos
+          if (!this.petForm.nombre || !this.petForm.especie || !this.petForm.sexo) {
+            alert("❌ Por favor complete los campos obligatorios: Nombre, Especie y Sexo");
+            return;
+          }
+
+          this.loading = true;
+          try {
+            const session = window.loadSession();
+
+            // Preparar datos de la mascota
+            // Usamos clienteDocumentId para que el backend resuelva el propietario
+            const datosMascota = {
+              nombre: this.petForm.nombre,
+              especie: this.petForm.especie,
+              raza: this.petForm.raza || null,
+              sexo: this.petForm.sexo,
+              peso: this.petForm.peso ? parseFloat(this.petForm.peso) : null,
+              fecha_nacimiento: this.petForm.fecha_nacimiento || null,
+              color: this.petForm.color || null,
+              // Enviar el documentId del cliente (Usuario collection)
+              clienteDocumentId: this.selectedClient.documentId,
+              // También enviar el correo como fallback
+              clienteCorreo: this.selectedClient.correo,
+            };
+
+            console.log("📝 Datos mascota a crear:", datosMascota);
+
+            const response = await fetch(`${window.STRAPI_URL}/api/pacientes`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.jwt}`,
+              },
+              body: JSON.stringify({ data: datosMascota }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              console.error("❌ Error response:", result);
+              throw new Error(result.error?.message || "Error al crear mascota");
+            }
+
+            console.log("✅ Mascota creada:", result);
+
+            alert("✅ Mascota agregada exitosamente");
+            this.closePetForm();
+
+            // Recargar datos
+            if (typeof window.cargarDatos === 'function') {
+              window.cargarDatos();
+            }
+          } catch (error) {
+            console.error("Error adding pet:", error);
+            alert("❌ Error al agregar mascota: " + error.message);
+          } finally {
+            this.loading = false;
+          }
+        },
+      }));
+    });
+  </script>
+</BaseDashboard>
