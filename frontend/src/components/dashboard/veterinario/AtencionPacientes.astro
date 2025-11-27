@@ -1,0 +1,846 @@
+---
+---
+
+<div class="atencion-citas bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+  <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+    <span>🏥</span>
+    <span>Atención de Pacientes</span>
+  </h2>
+  
+  <!-- Tabs -->
+  <div class="flex border-b border-gray-200 mb-4">
+    <button onclick="cambiarTabAtencion('pendientes')" id="tab-pendientes" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-600">
+      📋 Citas por Atender
+    </button>
+    <button onclick="cambiarTabAtencion('historial')" id="tab-historial" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+      📁 Historial de Atenciones
+    </button>
+  </div>
+  
+  <!-- Contenido de citas por atender -->
+  <div id="panel-pendientes" class="panel-atencion">
+    <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+      <p class="text-sm text-green-800">
+        <span class="font-semibold">ℹ️ Nota:</span> Solo se muestran citas que han sido <strong>confirmadas por recepción</strong>.
+      </p>
+    </div>
+    <div id="lista-citas-atender" class="space-y-3">
+      <p class="text-gray-500 text-center py-6 text-sm">Cargando citas...</p>
+    </div>
+  </div>
+  
+  <!-- Contenido de historial -->
+  <div id="panel-historial" class="panel-atencion hidden">
+    <div id="lista-fichas-historial" class="space-y-3">
+      <p class="text-gray-500 text-center py-6 text-sm">Cargando historial...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Atención -->
+<div id="modal-atencion" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+      <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <span>🩺</span>
+        <span>Registrar Atención Médica</span>
+      </h3>
+      <button onclick="cerrarModalAtencion()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    </div>
+    
+    <form id="form-ficha-medica" class="p-6 space-y-6">
+      <!-- Info de la cita (readonly) -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 class="font-semibold text-blue-900 mb-2">📋 Información de la Cita</h4>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <p><span class="font-medium">Paciente:</span> <span id="info-paciente">-</span></p>
+          <p><span class="font-medium">Especie:</span> <span id="info-especie">-</span></p>
+          <p><span class="font-medium">Propietario:</span> <span id="info-propietario">-</span></p>
+          <p><span class="font-medium">Fecha:</span> <span id="info-fecha">-</span></p>
+        </div>
+        <div class="mt-3 pt-3 border-t border-blue-200">
+          <p class="text-sm"><span class="font-medium">📝 Motivo de Consulta:</span></p>
+          <p id="info-motivo" class="text-gray-800 mt-1 bg-white p-2 rounded border border-blue-100">-</p>
+        </div>
+        <input type="hidden" id="cita-document-id" />
+        <input type="hidden" id="paciente-id" />
+        <input type="hidden" id="paciente-document-id" />
+        <input type="hidden" id="motivo-consulta-hidden" />
+      </div>
+      
+      <!-- Síntomas -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Síntomas Observados</label>
+        <textarea id="sintomas" rows="2"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Descripción de los síntomas..."></textarea>
+      </div>
+      
+      <!-- Signos Vitales -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h4 class="font-semibold text-gray-900 mb-3">📊 Signos Vitales</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Peso (kg)</label>
+            <input type="number" id="peso-actual" step="0.1" min="0" max="500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              placeholder="0.0" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Temperatura (°C)</label>
+            <input type="number" id="temperatura" step="0.1" min="30" max="45"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              placeholder="38.5" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Frec. Cardíaca (bpm)</label>
+            <input type="number" id="frecuencia-cardiaca" min="0" max="300"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              placeholder="80" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Frec. Respiratoria (rpm)</label>
+            <input type="number" id="frecuencia-respiratoria" min="0" max="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              placeholder="20" />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Diagnóstico -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Diagnóstico <span class="text-red-500">*</span>
+        </label>
+        <textarea id="diagnostico" rows="3" required
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Diagnóstico clínico del paciente..."></textarea>
+      </div>
+      
+      <!-- Tratamiento -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Tratamiento <span class="text-red-500">*</span>
+        </label>
+        <textarea id="tratamiento" rows="3" required
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Indicaciones de tratamiento, medicamentos, dosis..."></textarea>
+      </div>
+      
+      <!-- Procedimientos realizados -->
+      <div class="bg-yellow-50 rounded-lg p-4">
+        <h4 class="font-semibold text-gray-900 mb-3">🔧 Procedimientos Realizados</h4>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="vacunacion" class="rounded" />
+            <span>Vacunación</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="desparasitacion" class="rounded" />
+            <span>Desparasitación</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="curacion" class="rounded" />
+            <span>Curación</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="cirugia" class="rounded" />
+            <span>Cirugía menor</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="examen_sangre" class="rounded" />
+            <span>Examen de sangre</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="procedimiento" value="radiografia" class="rounded" />
+            <span>Radiografía</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Observaciones -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones Adicionales</label>
+        <textarea id="observaciones" rows="2"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Notas adicionales..."></textarea>
+      </div>
+      
+      <!-- RECETA MÉDICA -->
+      <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+        <h4 class="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+          <span>💊</span>
+          <span>Receta Médica</span>
+          <span class="text-xs font-normal text-purple-600">(Opcional)</span>
+        </h4>
+        
+        <!-- Lista de medicamentos -->
+        <div id="lista-medicamentos" class="space-y-2 mb-3">
+          <!-- Se agregan dinámicamente -->
+        </div>
+        
+        <button type="button" onclick="agregarMedicamento()"
+          class="w-full py-2 border-2 border-dashed border-purple-300 rounded-lg text-purple-600 hover:bg-purple-100 transition-colors text-sm flex items-center justify-center gap-2">
+          <span>+</span>
+          <span>Agregar Medicamento</span>
+        </button>
+        
+        <!-- Indicaciones generales de la receta -->
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-purple-800 mb-1">Indicaciones Generales</label>
+          <textarea id="indicaciones-receta" rows="2"
+            class="w-full px-3 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+            placeholder="Indicaciones adicionales para el tratamiento..."></textarea>
+        </div>
+      </div>
+      
+      <!-- Seguimiento -->
+      <div class="bg-green-50 rounded-lg p-4">
+        <h4 class="font-semibold text-gray-900 mb-3">📅 Seguimiento</h4>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="requiere-seguimiento" class="rounded" />
+            <span class="text-sm">Requiere control de seguimiento</span>
+          </label>
+          <div id="fecha-control-container" class="hidden">
+            <label class="text-sm text-gray-600 mr-2">Fecha sugerida:</label>
+            <input type="date" id="fecha-proximo-control"
+              class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Botones -->
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button type="button" onclick="cerrarModalAtencion()"
+          class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+          Cancelar
+        </button>
+        <button type="submit"
+          class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2">
+          <span>✓</span>
+          <span>Guardar Ficha Médica</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de Ver Ficha -->
+<div id="modal-ver-ficha" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+      <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <span>📄</span>
+        <span>Detalle de Ficha Médica</span>
+      </h3>
+      <button onclick="cerrarModalVerFicha()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    </div>
+    <div id="contenido-ficha" class="p-6">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<script>
+  import { loadSession } from '../../../lib/authHelpers.js';
+  import { FichasMedicasAPI } from '../../../lib/api/fichasMedicas.js';
+
+  const STRAPI_URL = 'http://localhost:1337';
+  let citasParaAtender: any[] = [];
+  let fichasHistorial: any[] = [];
+
+  // Cambiar tabs
+  (window as any).cambiarTabAtencion = function(tab: string) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('border-blue-500', 'text-blue-600');
+      btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    document.querySelectorAll('.panel-atencion').forEach(panel => {
+      panel.classList.add('hidden');
+    });
+    
+    const tabBtn = document.getElementById(`tab-${tab}`);
+    const panel = document.getElementById(`panel-${tab}`);
+    
+    if (tabBtn) {
+      tabBtn.classList.add('border-blue-500', 'text-blue-600');
+      tabBtn.classList.remove('border-transparent', 'text-gray-500');
+    }
+    if (panel) {
+      panel.classList.remove('hidden');
+    }
+    
+    if (tab === 'historial') {
+      cargarHistorialFichas();
+    }
+  };
+
+  async function cargarCitasParaAtender() {
+    const session = loadSession();
+    const jwt = session?.jwt;
+
+    if (!jwt) {
+      console.error('No hay JWT');
+      return;
+    }
+
+    try {
+      console.log('🔍 Cargando citas confirmadas para atender...');
+      
+      const response = await fetch(`${STRAPI_URL}/api/citas?populate=*&filters[estado][$eq]=confirmada&sort[0]=fecha:asc&sort[1]=hora:asc`, {
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      const data = await response.json();
+      citasParaAtender = data.data || [];
+      console.log('✅ Citas para atender:', citasParaAtender.length);
+      
+      renderizarCitasParaAtender();
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      document.getElementById('lista-citas-atender')!.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-red-800 text-sm">Error al cargar citas: ${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderizarCitasParaAtender() {
+    const container = document.getElementById('lista-citas-atender')!;
+    
+    if (citasParaAtender.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-4xl mb-2">✨</p>
+          <p class="text-gray-500">No hay citas confirmadas pendientes de atender</p>
+        </div>
+      `;
+      return;
+    }
+
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const html = citasParaAtender.map(cita => {
+      const paciente = cita.paciente;
+      const nombreMascota = paciente?.nombre || '(Sin nombre)';
+      const especie = paciente?.especie || '-';
+      const propietario = paciente?.propietario?.username || paciente?.propietario?.email || '-';
+      const horaFormateada = cita.hora ? cita.hora.substring(0, 5) : 'N/A';
+      const esHoy = cita.fecha === hoy;
+      
+      return `
+        <div class="border-l-4 border-l-green-500 bg-green-50 rounded-lg p-4 shadow-sm ${esHoy ? 'ring-2 ring-green-300' : ''}">
+          ${esHoy ? '<div class="bg-green-100 border border-green-300 rounded px-2 py-0.5 mb-2 inline-block"><p class="text-xs text-green-700 font-semibold">🟢 HOY</p></div>' : ''}
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">${especie === 'Perro' ? '🐕' : especie === 'Gato' ? '🐈' : '🐾'}</span>
+                <div>
+                  <p class="font-bold text-gray-900">${nombreMascota}</p>
+                  <p class="text-xs text-gray-600">${especie}</p>
+                </div>
+              </div>
+              <div class="space-y-1 text-sm">
+                <p><span class="font-medium">📅 Fecha:</span> ${cita.fecha}</p>
+                <p><span class="font-medium">⏰ Hora:</span> ${horaFormateada}</p>
+                <p><span class="font-medium">👤 Dueño:</span> ${propietario}</p>
+                ${cita.motivo ? `<p><span class="font-medium">📝 Motivo:</span> ${cita.motivo}</p>` : ''}
+              </div>
+            </div>
+            <button onclick="abrirModalAtencion('${cita.documentId}')"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+              <span>🩺</span>
+              <span>Atender</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  async function cargarHistorialFichas() {
+    const session = loadSession();
+    const jwt = session?.jwt;
+
+    if (!jwt) return;
+
+    try {
+      console.log('🔍 Cargando historial de fichas...');
+      const api = new FichasMedicasAPI(jwt);
+      fichasHistorial = await api.getMisFichas();
+      console.log('✅ Fichas cargadas:', fichasHistorial.length);
+      
+      renderizarHistorialFichas();
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      document.getElementById('lista-fichas-historial')!.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-red-800 text-sm">Error al cargar historial: ${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderizarHistorialFichas() {
+    const container = document.getElementById('lista-fichas-historial')!;
+    
+    if (fichasHistorial.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-4xl mb-2">📋</p>
+          <p class="text-gray-500">No hay fichas médicas registradas</p>
+        </div>
+      `;
+      return;
+    }
+
+    const html = fichasHistorial.map((ficha: any) => {
+      const paciente = ficha.paciente;
+      const nombreMascota = paciente?.nombre || '(Sin nombre)';
+      const especie = paciente?.especie || '-';
+      const fechaAtencion = new Date(ficha.fecha_atencion).toLocaleDateString('es-CL');
+      
+      return `
+        <div class="border border-gray-200 bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">${especie === 'Perro' ? '🐕' : especie === 'Gato' ? '🐈' : '🐾'}</span>
+                <div>
+                  <p class="font-bold text-gray-900">${nombreMascota}</p>
+                  <p class="text-xs text-gray-500">Atendido: ${fechaAtencion}</p>
+                </div>
+              </div>
+              <div class="space-y-1 text-sm">
+                <p><span class="font-medium">📋 Motivo:</span> ${ficha.motivo_consulta}</p>
+                <p class="text-gray-600 truncate"><span class="font-medium">🔍 Diagnóstico:</span> ${ficha.diagnostico?.substring(0, 100)}...</p>
+              </div>
+            </div>
+            <button onclick="verFicha('${ficha.documentId}')"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm flex items-center gap-1 transition-colors">
+              <span>👁️</span>
+              <span>Ver</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Abrir modal de atención
+  (window as any).abrirModalAtencion = function(citaDocumentId: string) {
+    const cita = citasParaAtender.find(c => c.documentId === citaDocumentId);
+    if (!cita) return;
+
+    const paciente = cita.paciente;
+    
+    // Llenar info de la cita
+    document.getElementById('info-paciente')!.textContent = paciente?.nombre || '-';
+    document.getElementById('info-especie')!.textContent = paciente?.especie || '-';
+    document.getElementById('info-propietario')!.textContent = paciente?.propietario?.username || paciente?.propietario?.email || '-';
+    document.getElementById('info-fecha')!.textContent = `${cita.fecha} a las ${cita.hora?.substring(0, 5)}`;
+    document.getElementById('info-motivo')!.textContent = cita.motivo || '(No especificado)';
+    
+    (document.getElementById('cita-document-id') as HTMLInputElement).value = citaDocumentId;
+    (document.getElementById('paciente-id') as HTMLInputElement).value = paciente?.id || '';
+    (document.getElementById('paciente-document-id') as HTMLInputElement).value = paciente?.documentId || '';
+    (document.getElementById('motivo-consulta-hidden') as HTMLInputElement).value = cita.motivo || '';
+    
+    // Prellenar peso si existe
+    if (paciente?.peso) {
+      (document.getElementById('peso-actual') as HTMLInputElement).value = paciente.peso;
+    }
+    
+    document.getElementById('modal-atencion')!.classList.remove('hidden');
+  };
+
+  // Cerrar modal de atención
+  (window as any).cerrarModalAtencion = function() {
+    document.getElementById('modal-atencion')!.classList.add('hidden');
+    (document.getElementById('form-ficha-medica') as HTMLFormElement).reset();
+  };
+
+  // Ver ficha médica
+  (window as any).verFicha = async function(documentId: string) {
+    const session = loadSession();
+    const jwt = session?.jwt;
+    if (!jwt) return;
+
+    try {
+      const api = new FichasMedicasAPI(jwt);
+      const ficha = await api.getFicha(documentId);
+      
+      const paciente = ficha.paciente;
+      const fechaAtencion = new Date(ficha.fecha_atencion).toLocaleString('es-CL');
+      
+      const procedimientos = ficha.procedimientos_realizados 
+        ? (Array.isArray(ficha.procedimientos_realizados) ? ficha.procedimientos_realizados.join(', ') : ficha.procedimientos_realizados)
+        : 'Ninguno';
+      
+      document.getElementById('contenido-ficha')!.innerHTML = `
+        <div class="space-y-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="font-semibold text-blue-900 mb-2">🐾 Paciente</h4>
+            <p><strong>Nombre:</strong> ${paciente?.nombre || '-'}</p>
+            <p><strong>Especie:</strong> ${paciente?.especie || '-'}</p>
+            <p><strong>Fecha de atención:</strong> ${fechaAtencion}</p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">📋 Motivo de Consulta</h4>
+            <p class="text-gray-700">${ficha.motivo_consulta}</p>
+          </div>
+          
+          ${ficha.sintomas ? `
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">🤒 Síntomas</h4>
+            <p class="text-gray-700">${ficha.sintomas}</p>
+          </div>
+          ` : ''}
+          
+          <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-900 mb-2">📊 Signos Vitales</h4>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <p><strong>Peso:</strong> ${ficha.peso_actual ? ficha.peso_actual + ' kg' : '-'}</p>
+              <p><strong>Temperatura:</strong> ${ficha.temperatura ? ficha.temperatura + ' °C' : '-'}</p>
+              <p><strong>Frec. Cardíaca:</strong> ${ficha.frecuencia_cardiaca ? ficha.frecuencia_cardiaca + ' bpm' : '-'}</p>
+              <p><strong>Frec. Respiratoria:</strong> ${ficha.frecuencia_respiratoria ? ficha.frecuencia_respiratoria + ' rpm' : '-'}</p>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">🔍 Diagnóstico</h4>
+            <div class="text-gray-700 bg-green-50 p-3 rounded-lg">${ficha.diagnostico}</div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">💊 Tratamiento</h4>
+            <div class="text-gray-700 bg-yellow-50 p-3 rounded-lg">${ficha.tratamiento}</div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">🔧 Procedimientos</h4>
+            <p class="text-gray-700">${procedimientos}</p>
+          </div>
+          
+          ${ficha.observaciones ? `
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-1">📝 Observaciones</h4>
+            <p class="text-gray-700">${ficha.observaciones}</p>
+          </div>
+          ` : ''}
+          
+          ${ficha.medicamentos_recetados && ficha.medicamentos_recetados.length > 0 ? `
+          <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h4 class="font-semibold text-purple-900">💊 Receta Médica</h4>
+              <button onclick="imprimirReceta('${ficha.documentId}')" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg flex items-center gap-1">
+                <span>🖨️</span>
+                <span>Imprimir Receta</span>
+              </button>
+            </div>
+            <div class="space-y-2">
+              ${ficha.medicamentos_recetados.map((med: any, idx: number) => `
+                <div class="bg-white p-2 rounded border border-purple-100">
+                  <p class="font-medium text-purple-800">${idx + 1}. ${med.nombre}</p>
+                  <div class="text-sm text-gray-600 grid grid-cols-3 gap-1 mt-1">
+                    ${med.dosis ? `<p><strong>Dosis:</strong> ${med.dosis}</p>` : ''}
+                    ${med.frecuencia ? `<p><strong>Frecuencia:</strong> ${med.frecuencia}</p>` : ''}
+                    ${med.duracion ? `<p><strong>Duración:</strong> ${med.duracion}</p>` : ''}
+                  </div>
+                  ${med.notas ? `<p class="text-xs text-gray-500 mt-1">${med.notas}</p>` : ''}
+                </div>
+              `).join('')}
+            </div>
+            ${ficha.indicaciones_receta ? `
+              <div class="mt-3 pt-3 border-t border-purple-200">
+                <p class="text-sm"><strong>Indicaciones:</strong> ${ficha.indicaciones_receta}</p>
+              </div>
+            ` : ''}
+          </div>
+          ` : ''}
+          
+          ${ficha.requiere_seguimiento ? `
+          <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <p class="text-orange-800"><strong>⚠️ Requiere seguimiento</strong></p>
+            ${ficha.fecha_proximo_control ? `<p class="text-sm">Próximo control: ${ficha.fecha_proximo_control}</p>` : ''}
+          </div>
+          ` : ''}
+        </div>
+      `;
+      
+      document.getElementById('modal-ver-ficha')!.classList.remove('hidden');
+    } catch (error: any) {
+      console.error('Error al cargar ficha:', error);
+      alert('Error al cargar la ficha médica');
+    }
+  };
+
+  // Cerrar modal ver ficha
+  (window as any).cerrarModalVerFicha = function() {
+    document.getElementById('modal-ver-ficha')!.classList.add('hidden');
+  };
+
+  // Imprimir receta médica
+  (window as any).imprimirReceta = async function(documentId: string) {
+    const session = loadSession();
+    const jwt = session?.jwt;
+    if (!jwt) return;
+
+    try {
+      const api = new FichasMedicasAPI(jwt);
+      const ficha = await api.getFicha(documentId);
+      
+      const paciente = ficha.paciente;
+      const fechaAtencion = new Date(ficha.fecha_atencion).toLocaleDateString('es-CL');
+      const veterinario = ficha.veterinario?.username || ficha.veterinario?.email || 'Veterinario';
+      
+      // Crear ventana de impresión
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Por favor permite las ventanas emergentes para imprimir');
+        return;
+      }
+      
+      const medicamentosHTML = ficha.medicamentos_recetados?.map((med: any, idx: number) => `
+        <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+          <p style="font-weight: bold; margin: 0 0 5px 0;">${idx + 1}. ${med.nombre}</p>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.9em;">
+            ${med.dosis ? `<p style="margin: 0;"><strong>Dosis:</strong> ${med.dosis}</p>` : ''}
+            ${med.frecuencia ? `<p style="margin: 0;"><strong>Frecuencia:</strong> ${med.frecuencia}</p>` : ''}
+            ${med.duracion ? `<p style="margin: 0;"><strong>Duración:</strong> ${med.duracion}</p>` : ''}
+          </div>
+          ${med.notas ? `<p style="margin: 5px 0 0 0; font-size: 0.85em; color: #666;">${med.notas}</p>` : ''}
+        </div>
+      `).join('') || '';
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Receta Médica - ${paciente?.nombre || 'Paciente'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+            .header h1 { color: #2563eb; margin: 0 0 5px 0; }
+            .header p { margin: 0; color: #666; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; background: #f3f4f6; padding: 15px; border-radius: 8px; }
+            .info-grid p { margin: 5px 0; }
+            .section { margin-bottom: 20px; }
+            .section h3 { color: #7c3aed; border-bottom: 1px solid #7c3aed; padding-bottom: 5px; }
+            .footer { margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
+            .signature { margin-top: 60px; text-align: center; }
+            .signature-line { border-top: 1px solid #333; width: 200px; margin: 0 auto; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🐾 Clínica Veterinaria Pochita</h1>
+            <p>Receta Médica Veterinaria</p>
+            <p style="font-size: 0.9em;">Fecha: ${fechaAtencion}</p>
+          </div>
+          
+          <div class="info-grid">
+            <div>
+              <p><strong>Paciente:</strong> ${paciente?.nombre || '-'}</p>
+              <p><strong>Especie:</strong> ${paciente?.especie || '-'}</p>
+              <p><strong>Raza:</strong> ${paciente?.raza || '-'}</p>
+            </div>
+            <div>
+              <p><strong>Propietario:</strong> ${paciente?.propietario?.username || paciente?.propietario?.email || '-'}</p>
+              <p><strong>Peso:</strong> ${ficha.peso_actual ? ficha.peso_actual + ' kg' : '-'}</p>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3>📋 Diagnóstico</h3>
+            <p>${ficha.diagnostico}</p>
+          </div>
+          
+          <div class="section">
+            <h3>💊 Medicamentos Recetados</h3>
+            ${medicamentosHTML}
+          </div>
+          
+          ${ficha.indicaciones_receta ? `
+          <div class="section">
+            <h3>📝 Indicaciones Generales</h3>
+            <p>${ficha.indicaciones_receta}</p>
+          </div>
+          ` : ''}
+          
+          <div class="signature">
+            <div class="signature-line"></div>
+            <p style="margin-top: 10px;"><strong>Dr. ${veterinario}</strong></p>
+            <p style="font-size: 0.9em; color: #666;">Médico Veterinario</p>
+          </div>
+          
+          <div class="footer">
+            <p style="font-size: 0.8em; color: #999;">
+              Este documento es una receta médica veterinaria. 
+              Siga las indicaciones de su veterinario.
+            </p>
+          </div>
+          
+          <scr` + `ipt>
+            window.onload = function() { window.print(); }
+          </scr` + `ipt>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+    } catch (error: any) {
+      console.error('Error al generar receta:', error);
+      alert('Error al generar la receta');
+    }
+  };
+
+  // Toggle fecha de control
+  document.getElementById('requiere-seguimiento')?.addEventListener('change', (e) => {
+    const target = e.target as HTMLInputElement;
+    const container = document.getElementById('fecha-control-container');
+    if (target.checked) {
+      container?.classList.remove('hidden');
+    } else {
+      container?.classList.add('hidden');
+    }
+  });
+
+  // Manejo de medicamentos
+  let contadorMedicamentos = 0;
+
+  (window as any).agregarMedicamento = function() {
+    contadorMedicamentos++;
+    const container = document.getElementById('lista-medicamentos')!;
+    const div = document.createElement('div');
+    div.id = `medicamento-${contadorMedicamentos}`;
+    div.className = 'bg-white p-3 rounded-lg border border-purple-200 space-y-2';
+    div.innerHTML = `
+      <div class="flex justify-between items-center">
+        <span class="text-sm font-medium text-purple-800">Medicamento #${contadorMedicamentos}</span>
+        <button type="button" onclick="eliminarMedicamento(${contadorMedicamentos})" class="text-red-500 hover:text-red-700 text-sm">✕ Eliminar</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <input type="text" name="med-nombre-${contadorMedicamentos}" placeholder="Nombre del medicamento" 
+          class="w-full px-2 py-1 border border-gray-300 rounded text-sm" required />
+        <input type="text" name="med-dosis-${contadorMedicamentos}" placeholder="Dosis (ej: 5mg)" 
+          class="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <input type="text" name="med-frecuencia-${contadorMedicamentos}" placeholder="Frecuencia (ej: cada 8 hrs)" 
+          class="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+        <input type="text" name="med-duracion-${contadorMedicamentos}" placeholder="Duración (ej: 7 días)" 
+          class="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+      </div>
+      <input type="text" name="med-notas-${contadorMedicamentos}" placeholder="Notas adicionales (opcional)" 
+        class="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+    `;
+    container.appendChild(div);
+  };
+
+  (window as any).eliminarMedicamento = function(id: number) {
+    const div = document.getElementById(`medicamento-${id}`);
+    if (div) div.remove();
+  };
+
+  function obtenerMedicamentos() {
+    const medicamentos: any[] = [];
+    const container = document.getElementById('lista-medicamentos')!;
+    const items = container.querySelectorAll('[id^="medicamento-"]');
+    
+    items.forEach((item) => {
+      const id = item.id.split('-')[1];
+      const nombre = (document.querySelector(`[name="med-nombre-${id}"]`) as HTMLInputElement)?.value;
+      if (nombre) {
+        medicamentos.push({
+          nombre,
+          dosis: (document.querySelector(`[name="med-dosis-${id}"]`) as HTMLInputElement)?.value || '',
+          frecuencia: (document.querySelector(`[name="med-frecuencia-${id}"]`) as HTMLInputElement)?.value || '',
+          duracion: (document.querySelector(`[name="med-duracion-${id}"]`) as HTMLInputElement)?.value || '',
+          notas: (document.querySelector(`[name="med-notas-${id}"]`) as HTMLInputElement)?.value || ''
+        });
+      }
+    });
+    
+    return medicamentos.length > 0 ? medicamentos : null;
+  }
+
+  // Enviar formulario
+  document.getElementById('form-ficha-medica')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const session = loadSession();
+    const jwt = session?.jwt;
+    if (!jwt) {
+      alert('Sesión expirada. Por favor inicia sesión nuevamente.');
+      return;
+    }
+
+    const citaDocumentId = (document.getElementById('cita-document-id') as HTMLInputElement).value;
+    const pacienteId = (document.getElementById('paciente-id') as HTMLInputElement).value;
+    const pacienteDocumentId = (document.getElementById('paciente-document-id') as HTMLInputElement).value;
+    const motivoConsulta = (document.getElementById('motivo-consulta-hidden') as HTMLInputElement).value;
+    
+    // Obtener procedimientos seleccionados
+    const procedimientosChecked = document.querySelectorAll('input[name="procedimiento"]:checked');
+    const procedimientos = Array.from(procedimientosChecked).map((cb: any) => cb.value);
+
+    const datos = {
+      pacienteId: parseInt(pacienteId),
+      pacienteDocumentId,
+      citaDocumentId,
+      motivo_consulta: motivoConsulta || 'Consulta general',
+      sintomas: (document.getElementById('sintomas') as HTMLTextAreaElement).value || null,
+      diagnostico: (document.getElementById('diagnostico') as HTMLTextAreaElement).value,
+      tratamiento: (document.getElementById('tratamiento') as HTMLTextAreaElement).value,
+      observaciones: (document.getElementById('observaciones') as HTMLTextAreaElement).value || null,
+      peso_actual: parseFloat((document.getElementById('peso-actual') as HTMLInputElement).value) || null,
+      temperatura: parseFloat((document.getElementById('temperatura') as HTMLInputElement).value) || null,
+      frecuencia_cardiaca: parseInt((document.getElementById('frecuencia-cardiaca') as HTMLInputElement).value) || null,
+      frecuencia_respiratoria: parseInt((document.getElementById('frecuencia-respiratoria') as HTMLInputElement).value) || null,
+      procedimientos_realizados: procedimientos.length > 0 ? procedimientos : null,
+      requiere_seguimiento: (document.getElementById('requiere-seguimiento') as HTMLInputElement).checked,
+      fecha_proximo_control: (document.getElementById('fecha-proximo-control') as HTMLInputElement).value || null,
+      medicamentos_recetados: obtenerMedicamentos(),
+      indicaciones_receta: (document.getElementById('indicaciones-receta') as HTMLTextAreaElement).value || null,
+    };
+
+    console.log('📤 Enviando ficha médica:', datos);
+
+    try {
+      const api = new FichasMedicasAPI(jwt);
+      await api.crearFicha(datos);
+      
+      alert('✅ Ficha médica guardada correctamente. La cita ha sido marcada como atendida.');
+      (window as any).cerrarModalAtencion();
+      
+      // Recargar listas
+      cargarCitasParaAtender();
+      
+    } catch (error: any) {
+      console.error('❌ Error al guardar ficha:', error);
+      alert('Error al guardar la ficha médica: ' + error.message);
+    }
+  });
+
+  // Cargar al iniciar
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarCitasParaAtender();
+  });
+</script>

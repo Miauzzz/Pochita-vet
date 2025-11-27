@@ -63,6 +63,12 @@
       "relation": "oneToMany",
       "target": "api::notificacion.notificacion",
       "mappedBy": "cita_relacionada"
+    },
+    "ficha_medica": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::ficha-medica.ficha-medica",
+      "mappedBy": "cita"
     }
   }
 }

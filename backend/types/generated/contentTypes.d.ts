@@ -454,6 +454,10 @@ export interface ApiCitaCita extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pendiente'>;
     fecha: Schema.Attribute.Date & Schema.Attribute.Required;
+    ficha_medica: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::ficha-medica.ficha-medica'
+    >;
     hora: Schema.Attribute.Time & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::cita.cita'> &
@@ -514,6 +518,97 @@ export interface ApiDisponibilidadDisponibilidad
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    veterinario: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiFichaMedicaFichaMedica extends Struct.CollectionTypeSchema {
+  collectionName: 'fichas_medicas';
+  info: {
+    description: 'Registro m\u00E9dico de atenci\u00F3n veterinaria';
+    displayName: 'ficha_medica';
+    pluralName: 'fichas-medicas';
+    singularName: 'ficha-medica';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cita: Schema.Attribute.Relation<'oneToOne', 'api::cita.cita'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    diagnostico: Schema.Attribute.RichText & Schema.Attribute.Required;
+    fecha_atencion: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    fecha_proximo_control: Schema.Attribute.Date;
+    frecuencia_cardiaca: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 300;
+          min: 0;
+        },
+        number
+      >;
+    frecuencia_respiratoria: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
+    indicaciones_receta: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 2000;
+      }>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::ficha-medica.ficha-medica'
+    > &
+      Schema.Attribute.Private;
+    medicamentos_recetados: Schema.Attribute.JSON;
+    motivo_consulta: Schema.Attribute.Text &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    observaciones: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 2000;
+      }>;
+    paciente: Schema.Attribute.Relation<'manyToOne', 'api::paciente.paciente'>;
+    peso_actual: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 500;
+          min: 0;
+        },
+        number
+      >;
+    procedimientos_realizados: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    requiere_seguimiento: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    sintomas: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1000;
+      }>;
+    temperatura: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 45;
+          min: 30;
+        },
+        number
+      >;
+    tratamiento: Schema.Attribute.RichText & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -603,6 +698,10 @@ export interface ApiPacientePaciente extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Perro'>;
     fecha_nacimiento: Schema.Attribute.Date;
+    fichas_medicas: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::ficha-medica.ficha-medica'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1212,6 +1311,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::cita.cita': ApiCitaCita;
       'api::disponibilidad.disponibilidad': ApiDisponibilidadDisponibilidad;
+      'api::ficha-medica.ficha-medica': ApiFichaMedicaFichaMedica;
       'api::notificacion.notificacion': ApiNotificacionNotificacion;
       'api::paciente.paciente': ApiPacientePaciente;
       'api::usuario.usuario': ApiUsuarioUsuario;

@@ -6,6 +6,7 @@ import Badge from '../../components/ui/Badge.astro';
 import Loading from '../../components/ui/Loading.astro';
 import Input from '../../components/ui/Input.astro';
 import Modal from '../../components/ui/Modal.astro';
+import AtencionPacientes from '../../components/dashboard/veterinario/AtencionPacientes.astro';
 ---
 
 <!-- Script de verificación ANTES de renderizar contenido -->
@@ -86,6 +87,11 @@ import Modal from '../../components/ui/Modal.astro';
           <Loading text="Cargando disponibilidades..." />
         </div>
       </Card>
+    </section>
+
+    <!-- Sección: Atención de Pacientes (Fichas Médicas) -->
+    <section>
+      <AtencionPacientes />
     </section>
 
     <!-- Sección: Mi Agenda -->

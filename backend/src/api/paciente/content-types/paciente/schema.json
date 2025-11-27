@@ -69,6 +69,12 @@
       "relation": "oneToMany",
       "target": "api::cita.cita",
       "mappedBy": "paciente"
+    },
+    "fichas_medicas": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::ficha-medica.ficha-medica",
+      "mappedBy": "paciente"
     }
   }
 }

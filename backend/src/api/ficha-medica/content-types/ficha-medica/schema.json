@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "fichas_medicas",
+  "info": {
+    "singularName": "ficha-medica",
+    "pluralName": "fichas-medicas",
+    "displayName": "ficha_medica",
+    "description": "Registro médico de atención veterinaria"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fecha_atencion": {
+      "type": "datetime",
+      "required": true
+    },
+    "motivo_consulta": {
+      "type": "text",
+      "maxLength": 500,
+      "required": true
+    },
+    "sintomas": {
+      "type": "text",
+      "maxLength": 1000
+    },
+    "diagnostico": {
+      "type": "richtext",
+      "required": true
+    },
+    "tratamiento": {
+      "type": "richtext",
+      "required": true
+    },
+    "observaciones": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "peso_actual": {
+      "type": "decimal",
+      "min": 0,
+      "max": 500
+    },
+    "temperatura": {
+      "type": "decimal",
+      "min": 30,
+      "max": 45
+    },
+    "frecuencia_cardiaca": {
+      "type": "integer",
+      "min": 0,
+      "max": 300
+    },
+    "frecuencia_respiratoria": {
+      "type": "integer",
+      "min": 0,
+      "max": 100
+    },
+    "procedimientos_realizados": {
+      "type": "json"
+    },
+    "requiere_seguimiento": {
+      "type": "boolean",
+      "default": false
+    },
+    "fecha_proximo_control": {
+      "type": "date"
+    },
+    "medicamentos_recetados": {
+      "type": "json"
+    },
+    "indicaciones_receta": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "paciente": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::paciente.paciente",
+      "inversedBy": "fichas_medicas"
+    },
+    "cita": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cita.cita",
+      "inversedBy": "ficha_medica"
+    },
+    "veterinario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
